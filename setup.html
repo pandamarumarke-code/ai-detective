@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔑 APIキー取得ガイド — AI探偵団</title>
+  <meta name="description" content="AI探偵団で遊ぶために必要な Claude API Key と Gemini API Key の取得方法をステップバイステップで解説します。">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="setup-page">
+
+  <!-- ヘッダー -->
+  <header class="setup-header">
+    <div class="setup-header-inner">
+      <h1 class="setup-title">🔑 APIキー取得ガイド</h1>
+      <a href="index.html" class="btn-back-to-game">🎮 ゲームに戻る</a>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="setup-container">
+
+    <!-- イントロ -->
+    <section class="setup-intro">
+      <p class="setup-lead">
+        AI探偵団で遊ぶには、<strong>AIのAPIキー</strong>が必要です。<br>
+        以下の手順に沿えば、<span class="highlight">5分で取得</span>できます！
+      </p>
+
+      <div class="setup-summary-card">
+        <h2>📋 必要なもの</h2>
+        <ul class="key-checklist">
+          <li class="key-required">
+            <span class="badge badge-required">必須</span>
+            <strong>Claude API Key</strong> — シナリオ生成・推理・採点に使用
+          </li>
+          <li class="key-optional">
+            <span class="badge badge-optional">任意</span>
+            <strong>Gemini API Key</strong> — カード画像・ポートレート生成に使用
+          </li>
+        </ul>
+
+        <div class="cost-info">
+          <h3>💰 料金の目安</h3>
+          <table class="cost-table">
+            <thead>
+              <tr><th>サービス</th><th>1ゲームあたり</th><th>$5チャージで</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Claude <small>(Advisor ON)</small></td>
+                <td>~$0.43（約65円）</td>
+                <td>約11ゲーム</td>
+              </tr>
+              <tr>
+                <td>Gemini <small>(画像生成)</small></td>
+                <td>~$0.03（約5円）</td>
+                <td>無料枠で十分 ✨</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="cost-note">
+            ※ 月額料金は<strong>一切かかりません</strong>。使った分だけの従量課金です。<br>
+            ※ Geminiは無料枠が大きいため、通常のプレイでは費用ゼロです。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- Claude APIキー取得セクション -->
+    <!-- ============================================ -->
+    <section class="setup-section" id="claude-section">
+      <div class="section-header">
+        <div class="section-icon">🤖</div>
+        <div>
+          <h2>Claude APIキーの取得</h2>
+          <p class="section-subtitle">シナリオ生成に必須 — 約3分</p>
+        </div>
+        <span class="badge badge-required">必須</span>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Anthropicアカウントを作成する</h3>
+          <ol class="step-instructions">
+            <li>下のボタンをクリックして、Anthropic Consoleを開きます</li>
+            <li>右上の <strong>「Sign up」</strong> をクリック</li>
+            <li>メールアドレスとパスワードを入力して登録<br>
+              <small class="step-tip">💡 Googleアカウントでもログインできます</small>
+            </li>
+          </ol>
+          <a href="https://console.anthropic.com/" target="_blank" rel="noopener" class="btn-external">
+            🔗 Anthropic Console を開く
+            <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>支払い情報を登録する</h3>
+          <ol class="step-instructions">
+            <li>ログイン後、左メニューの <strong>「Settings」→「Billing」</strong> を開く</li>
+            <li><strong>「Add payment method」</strong> でクレジットカードを登録</li>
+            <li><strong>$5〜$10</strong> 程度をチャージ</li>
+          </ol>
+          <div class="step-callout">
+            <span class="callout-icon">💡</span>
+            <div>
+              <p>$5で約11ゲーム遊べます。</p>
+              <p>従量課金制なので、<strong>月額料金はかかりません</strong>。使った分だけ課金されます。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>APIキーを発行する</h3>
+          <ol class="step-instructions">
+            <li>下のボタンをクリックして、APIキー管理ページを開きます</li>
+            <li><strong>「Create Key」</strong> ボタンをクリック</li>
+            <li>キーの名前を入力（例: 「AI探偵団」）</li>
+            <li>表示されたキーを <strong>コピー</strong> します</li>
+          </ol>
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" class="btn-external">
+            🔗 API Keys ページを開く
+            <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+          <div class="step-callout step-callout-warning">
+            <span class="callout-icon">⚠️</span>
+            <div>
+              <p><strong>キーは一度しか表示されません！</strong></p>
+              <p>必ずこのタイミングでコピーしてください。閉じてしまうと再表示できません。<br>（忘れた場合は、古いキーを削除して新しく作り直せます）</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card step-card-success">
+        <div class="step-number step-number-success">4</div>
+        <div class="step-content">
+          <h3>✅ ゲームに設定する</h3>
+          <ol class="step-instructions">
+            <li>AI探偵団のトップページで <strong>⚙️（設定ボタン）</strong> をクリック</li>
+            <li>「AI設定」タブの <strong>「Claude API Key」</strong> にペースト</li>
+            <li><strong>「💾 保存」</strong> をクリック</li>
+          </ol>
+          <a href="index.html" class="btn-game-back">
+            🎮 ゲームに戻って設定する →
+          </a>
+        </div>
+      </div>
+
+      <div class="section-complete">
+        <p>🎉 Claude APIキーの設定は以上です！これだけでゲームが遊べます。</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- Gemini APIキー取得セクション -->
+    <!-- ============================================ -->
+    <section class="setup-section" id="gemini-section">
+      <div class="section-header">
+        <div class="section-icon">🎨</div>
+        <div>
+          <h2>Gemini APIキーの取得</h2>
+          <p class="section-subtitle">カード画像生成 — 約2分</p>
+        </div>
+        <span class="badge badge-optional">任意</span>
+      </div>
+
+      <div class="step-callout step-callout-info" style="margin-bottom: var(--space-lg);">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          <p><strong>Geminiキーがなくてもゲームはフルに遊べます。</strong></p>
+          <p>画像生成をOFFにすれば、テキストだけで推理を楽しめます。<br>画像付きでよりリッチな体験をしたい方は、以下の手順でキーを取得してください。</p>
+        </div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Google AI Studioにログインする</h3>
+          <ol class="step-instructions">
+            <li>下のボタンをクリックして、Google AI Studioを開きます</li>
+            <li><strong>Googleアカウント</strong>でログイン（既存のGmailでOK）</li>
+          </ol>
+          <a href="https://aistudio.google.com/" target="_blank" rel="noopener" class="btn-external btn-external-gemini">
+            🔗 Google AI Studio を開く
+            <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>APIキーを発行する</h3>
+          <ol class="step-instructions">
+            <li>下のボタンをクリックして、APIキーページを開きます</li>
+            <li><strong>「APIキーを作成」</strong> をクリック</li>
+            <li>「新しいプロジェクトで API キーを作成」を選択</li>
+            <li>表示されたキーを <strong>コピー</strong> します</li>
+          </ol>
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="btn-external btn-external-gemini">
+            🔗 API Keys ページを開く
+            <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+          <div class="step-callout step-callout-success">
+            <span class="callout-icon">✨</span>
+            <div>
+              <p><strong>Geminiには大容量の無料枠があります！</strong></p>
+              <p>1日1,500リクエストまで無料。通常のプレイなら<strong>料金はゼロ</strong>です。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card step-card-success">
+        <div class="step-number step-number-success">3</div>
+        <div class="step-content">
+          <h3>✅ ゲームに設定する</h3>
+          <ol class="step-instructions">
+            <li>AI探偵団の設定画面（⚙️）を開く</li>
+            <li><strong>「🎨 画像生成」タブ</strong> に切り替え</li>
+            <li>「Gemini API Key」にペースト</li>
+            <li><strong>「💾 保存」</strong> をクリック</li>
+          </ol>
+          <a href="index.html" class="btn-game-back">
+            🎮 ゲームに戻って設定する →
+          </a>
+        </div>
+      </div>
+
+      <div class="section-complete section-complete-gemini">
+        <p>🎉 Gemini APIキーの設定完了！カード画像が自動生成されるようになります。</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- FAQ セクション -->
+    <!-- ============================================ -->
+    <section class="setup-section" id="faq-section">
+      <div class="section-header">
+        <div class="section-icon">❓</div>
+        <div>
+          <h2>よくある質問</h2>
+          <p class="section-subtitle">困ったときはこちら</p>
+        </div>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Q. APIキーは安全ですか？</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>はい。APIキーは<strong>あなたのブラウザ内（localStorage）だけ</strong>に保存されます。外部サーバーには一切送信されません。</p>
+            <p>技術的には、ブラウザからanthropic.comのAPIに直接通信するため、第三者がキーを見ることはできません。</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Q. 月額料金はかかりますか？</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p><strong>いいえ、月額料金は一切かかりません。</strong></p>
+            <p>Claude APIは完全な従量課金制です。ゲームを遊んだときだけ料金が発生します。1ゲームあたり約$0.43（約65円）です。</p>
+            <p>Gemini APIは無料枠が大きいため、通常のプレイでは費用ゼロです。</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Q. Geminiのキーなしでも遊べますか？</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p><strong>はい！テキストだけでフル機能プレイできます。</strong></p>
+            <p>画像生成は雰囲気を高めるためのオプションです。設定画面で「画像生成」をOFFにすれば、Claudeのキーだけでゲーム本来のミステリー推理を楽しめます。</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Q. APIキーを忘れてしまいました</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Claudeのキーは一度だけ表示されるため、忘れた場合は<strong>古いキーを削除して新しく作り直し</strong>てください。</p>
+            <p>Geminiのキーは <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> でいつでも確認できます。</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <span>Q. 料金がいくらかかったか確認する方法は？</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Claudeの利用料金は <a href="https://console.anthropic.com/settings/billing" target="_blank">Anthropic Console → Billing</a> でリアルタイムに確認できます。</p>
+            <p>Geminiの利用量は <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> で確認できます。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA — ゲームに戻る -->
+    <section class="setup-cta">
+      <p>準備ができたら、さっそくミステリーに挑みましょう！</p>
+      <a href="index.html" class="btn-cta-game">
+        🔍 AI探偵団を始める
+      </a>
+    </section>
+
+  </main>
+
+  <!-- フッター -->
+  <footer class="setup-footer">
+    <p>AI探偵団 — AIが紡ぐ、無限のミステリー</p>
+  </footer>
+
+</body>
+</html>

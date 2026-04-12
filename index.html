@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI探偵団 — AIミステリーシナリオ自動生成ゲーム</title>
+  <meta name="description" content="AIが毎回異なるミステリーシナリオを自動生成。手がかりカードをめくり、推理して犯人を突き止めろ！1〜4人で遊べる協力型推理ゲーム。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- SCREEN: タイトル画面                          -->
+  <!-- ============================================ -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg">
+      <div class="title-particles" id="particles"></div>
+      <div class="title-content">
+        <div class="title-badge">AI MYSTERY GENERATOR</div>
+        <h1 class="title-logo">
+          <span class="title-logo-sub">AI</span>
+          <span class="title-logo-main">探偵団</span>
+        </h1>
+        <p class="title-tagline">AIが紡ぐ、無限のミステリー</p>
+        <div class="title-actions">
+          <button id="btn-new-game" class="btn btn-primary btn-glow">
+            <span class="btn-icon">🔍</span>
+            新しい事件に挑む
+          </button>
+          <button id="btn-history" class="btn btn-secondary">
+            <span class="btn-icon">📁</span>
+            事件簿を見る
+          </button>
+          <button id="btn-settings" class="btn btn-ghost">
+            <span class="btn-icon">⚙️</span>
+            設定
+          </button>
+        </div>
+        <div class="title-stats" id="title-stats"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: ゲーム設定画面                        -->
+  <!-- ============================================ -->
+  <div id="screen-config" class="screen">
+    <div class="config-container">
+      <button class="btn-back" id="btn-config-back">← 戻る</button>
+      <h2 class="section-title">事件ファイル設定</h2>
+
+      <div class="config-section">
+        <h3 class="config-label">🎭 テーマ</h3>
+        <div class="config-grid" id="theme-grid">
+          <button class="config-card selected" data-theme="classic">
+            <span class="config-card-icon">🏛️</span>
+            <span class="config-card-name">クラシック</span>
+            <span class="config-card-desc">洋館・密室・正統派</span>
+          </button>
+          <button class="config-card" data-theme="school">
+            <span class="config-card-icon">🏫</span>
+            <span class="config-card-name">学園</span>
+            <span class="config-card-desc">学校・部活・青春</span>
+          </button>
+          <button class="config-card" data-theme="sf">
+            <span class="config-card-icon">🚀</span>
+            <span class="config-card-name">SF</span>
+            <span class="config-card-desc">宇宙船・未来・テクノロジー</span>
+          </button>
+          <button class="config-card" data-theme="japanese">
+            <span class="config-card-icon">⛩️</span>
+            <span class="config-card-name">和風</span>
+            <span class="config-card-desc">旅館・祭り・伝統</span>
+          </button>
+          <button class="config-card" data-theme="noir">
+            <span class="config-card-icon">🌃</span>
+            <span class="config-card-name">ノワール</span>
+            <span class="config-card-desc">都市・裏社会・ハードボイルド</span>
+          </button>
+          <button class="config-card" data-theme="fantasy">
+            <span class="config-card-icon">🧙</span>
+            <span class="config-card-name">ファンタジー</span>
+            <span class="config-card-desc">魔法・王国・ドラゴン</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <h3 class="config-label">📊 難易度</h3>
+        <div class="difficulty-selector">
+          <button class="difficulty-btn" data-difficulty="easy">
+            <span class="difficulty-star">⭐</span>
+            <span class="difficulty-name">ビギナー</span>
+            <span class="difficulty-desc">ヒント多め・容疑者3人</span>
+          </button>
+          <button class="difficulty-btn selected" data-difficulty="normal">
+            <span class="difficulty-star">⭐⭐</span>
+            <span class="difficulty-name">スタンダード</span>
+            <span class="difficulty-desc">バランス型・容疑者4人</span>
+          </button>
+          <button class="difficulty-btn" data-difficulty="hard">
+            <span class="difficulty-star">⭐⭐⭐</span>
+            <span class="difficulty-name">ハード</span>
+            <span class="difficulty-desc">レッドヘリング多・容疑者5人</span>
+          </button>
+        </div>
+      </div>
+
+      <button id="btn-generate" class="btn btn-primary btn-glow btn-lg">
+        🔮 事件を生成する
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: 生成中画面                            -->
+  <!-- ============================================ -->
+  <div id="screen-generating" class="screen">
+    <div class="generating-container">
+      <div class="generating-animation">
+        <div class="magnifier">
+          <div class="magnifier-glass">🔍</div>
+          <div class="magnifier-rays"></div>
+        </div>
+      </div>
+      <h2 class="generating-title">事件ファイルを構築中...</h2>
+      <div class="generating-steps">
+        <div class="gen-step" id="gen-step-1">
+          <span class="gen-step-icon">⏳</span>
+          <span>シナリオを生成中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-2">
+          <span class="gen-step-icon">⏳</span>
+          <span>構造を検証中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-3">
+          <span class="gen-step-icon">⏳</span>
+          <span>論理整合性を検証中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-4">
+          <span class="gen-step-icon">⏳</span>
+          <span>日本語品質をチェック中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-5">
+          <span class="gen-step-icon">⏳</span>
+          <span>最終調整中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-6">
+          <span class="gen-step-icon">⏳</span>
+          <span>🎨 イメージ生成中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-7">
+          <span class="gen-step-icon">⏳</span>
+          <span>🎨 カードイラスト生成中...</span>
+        </div>
+        <div class="gen-step" id="gen-step-8">
+          <span class="gen-step-icon">⏳</span>
+          <span>事件ファイル完成！</span>
+        </div>
+      </div>
+      <div class="generating-retry" id="gen-retry" style="display:none;">
+        <span class="retry-icon">🔄</span>
+        <span id="gen-retry-text">リトライ中...</span>
+      </div>
+      <div class="generating-error" id="gen-error" style="display:none;">
+        <p id="gen-error-text"></p>
+        <button id="btn-retry" class="btn btn-primary">再試行</button>
+        <button id="btn-gen-back" class="btn btn-secondary">設定に戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: ゲーム画面（導入〜調査〜回答）        -->
+  <!-- ============================================ -->
+  <div id="screen-game" class="screen">
+    <div class="game-container">
+      <!-- ヘッダー -->
+      <header class="game-header">
+        <div class="case-badge">
+          <span class="case-label">CASE</span>
+          <span class="case-number" id="case-number">#001</span>
+        </div>
+        <h2 class="case-title" id="case-title">事件名</h2>
+        <div class="game-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <span class="progress-label" id="progress-label">導入</span>
+        </div>
+      </header>
+
+      <!-- メインエリア -->
+      <main class="game-main">
+        <!-- 導入パネル -->
+        <div id="panel-intro" class="game-panel">
+          <div class="intro-card">
+            <div class="intro-header">
+              <span class="intro-icon">📖</span>
+              <h3>事件概要</h3>
+            </div>
+            <div class="intro-body" id="intro-text"></div>
+            <div class="intro-victim">
+              <h4>👤 被害者情報</h4>
+              <div id="victim-info"></div>
+            </div>
+          </div>
+          <button id="btn-start-investigation" class="btn btn-primary btn-glow">
+            🔍 捜査を開始する
+          </button>
+        </div>
+
+        <!-- 調査パネル -->
+        <div id="panel-investigation" class="game-panel" style="display:none;">
+          <div class="investigation-header">
+            <h3 class="phase-title" id="phase-title">第1調査</h3>
+            <p class="phase-instruction" id="phase-instruction">4枚の手がかりカードから2枚を選んでください</p>
+          </div>
+          
+          <div class="cards-area" id="cards-area"></div>
+
+          <div class="card-selection-info">
+            <span id="selection-count">0</span> / <span id="selection-max">2</span> 選択済み
+          </div>
+
+          <button id="btn-confirm-cards" class="btn btn-primary" disabled>
+            選択を確定する
+          </button>
+
+          <!-- 公開済みカード -->
+          <div class="revealed-section" id="revealed-section" style="display:none;">
+            <h4>📋 公開済みの手がかり</h4>
+            <div class="revealed-cards" id="revealed-cards"></div>
+          </div>
+
+          <button id="btn-next-phase" class="btn btn-primary btn-glow" style="display:none;">
+            次の調査へ →
+          </button>
+        </div>
+
+        <!-- 回答パネル -->
+        <div id="panel-answer" class="game-panel" style="display:none;">
+          <div class="answer-header">
+            <span class="answer-icon">📝</span>
+            <h3>最終推理</h3>
+            <p>すべての手がかりを元に、事件の真相を推理してください</p>
+          </div>
+          
+          <div class="answer-form">
+            <div class="answer-field">
+              <label>🎭 犯人は誰か？</label>
+              <div class="suspect-choices" id="suspect-choices"></div>
+            </div>
+            <div class="answer-field">
+              <label>💡 犯行の動機は？</label>
+              <textarea id="answer-motive" placeholder="動機を記述してください..." rows="3"></textarea>
+            </div>
+            <div class="answer-field">
+              <label>🔪 犯行の手口は？</label>
+              <textarea id="answer-method" placeholder="犯行方法を記述してください..." rows="3"></textarea>
+            </div>
+          </div>
+
+          <button id="btn-submit-answer" class="btn btn-primary btn-glow btn-lg">
+            📨 推理を提出する
+          </button>
+        </div>
+      </main>
+
+      <!-- サイドバー（容疑者一覧 + 推理ノート） -->
+      <aside class="game-sidebar">
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-tab="suspects">👥 容疑者</button>
+          <button class="sidebar-tab" data-tab="notes">📝 メモ</button>
+          <button class="sidebar-tab" data-tab="clues">🔍 手がかり</button>
+        </div>
+        <div class="sidebar-content">
+          <div id="tab-suspects" class="tab-panel active">
+            <div id="suspect-list"></div>
+          </div>
+          <div id="tab-notes" class="tab-panel">
+            <textarea id="player-notes" placeholder="推理メモを自由に記入..."></textarea>
+          </div>
+          <div id="tab-clues" class="tab-panel">
+            <div id="clue-list">
+              <p class="clue-empty">まだ手がかりがありません</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: 結果画面                              -->
+  <!-- ============================================ -->
+  <div id="screen-result" class="screen">
+    <div class="result-container">
+      <div class="result-rank-area">
+        <div class="result-badge" id="result-badge">🏆</div>
+        <h2 class="result-title" id="result-title">名探偵</h2>
+        <div class="result-score" id="result-score">7 / 7</div>
+      </div>
+
+      <div class="result-details">
+        <h3>📋 答え合わせ</h3>
+        <div id="result-answers"></div>
+      </div>
+
+      <div class="result-solution">
+        <h3>📖 事件の真相</h3>
+        <div id="result-solution-text"></div>
+      </div>
+
+      <!-- シェアセクション -->
+      <div class="share-section">
+        <div class="share-card">
+          <div class="share-card-header">
+            <span class="share-icon">📤</span>
+            <div>
+              <h4>このシナリオをシェア</h4>
+              <p class="share-desc">友人に同じ事件で挑戦させよう！</p>
+            </div>
+          </div>
+          <div class="share-actions">
+            <button id="btn-share-copy" class="btn btn-primary btn-sm">
+              📋 リンクをコピー
+            </button>
+            <button id="btn-share-native" class="btn btn-secondary btn-sm" style="display:none;">
+              📤 シェアする
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button id="btn-new-case" class="btn btn-primary btn-glow">
+          🔍 新しい事件に挑む
+        </button>
+        <button id="btn-back-title" class="btn btn-secondary">
+          🏠 タイトルに戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: 共有シナリオ受信画面                  -->
+  <!-- ============================================ -->
+  <div id="screen-shared" class="screen">
+    <div class="shared-container">
+      <div class="shared-header">
+        <span class="shared-icon">🔗</span>
+        <h2>共有された事件ファイル</h2>
+      </div>
+      <div class="shared-card" id="shared-card">
+        <div class="shared-title" id="shared-title">事件名</div>
+        <div class="shared-meta" id="shared-meta"></div>
+        <div class="shared-info" id="shared-info"></div>
+      </div>
+      <div class="shared-notice">
+        <span>⚠️</span>
+        <p>この事件は友人がプレイ済みです。<br>答えを聞かずに挑戦しましょう！</p>
+      </div>
+      <div class="shared-actions">
+        <button id="btn-play-shared" class="btn btn-primary btn-glow">
+          🔍 この事件に挑む
+        </button>
+        <button id="btn-shared-back" class="btn btn-secondary">
+          🏠 タイトルに戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: 設定                                   -->
+  <!-- ============================================ -->
+  <div id="modal-settings" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="btn-modal-close">✕</button>
+      <h2 class="modal-title">⚙️ 設定</h2>
+
+      <!-- タブナビゲーション -->
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-settings-tab="ai">🤖 AI設定</button>
+        <button class="settings-tab" data-settings-tab="image">🎨 画像生成</button>
+      </div>
+
+      <!-- AI設定タブ -->
+      <div class="settings-panel active" id="settings-panel-ai">
+        <div class="setting-item">
+          <label for="api-key">🔑 Claude API Key</label>
+          <input type="password" id="api-key" placeholder="sk-ant-api03-...">
+          <p class="setting-hint">
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a>
+            でAPIキーを取得できます
+          </p>
+          <a href="setup.html" target="_blank" class="guide-link-btn">📖 取得方法をステップで見る</a>
+        </div>
+        <div class="setting-item">
+          <label>🧠 Advisor戦略（Opus + Sonnet連携）</label>
+          <div class="switch-container">
+            <div class="switch on" id="switch-advisor-enabled">
+              <div class="switch-thumb"></div>
+            </div>
+            <span class="switch-label" id="advisor-switch-label">有効</span>
+          </div>
+          <p class="setting-hint">
+            ONの場合: Opusが判断、Sonnetが生成（推奨・高品質＆低コスト）<br>
+            OFFの場合: 下で選択したモデルが単体で実行
+          </p>
+        </div>
+        <div class="setting-item">
+          <label for="model-select">🤖 フォールバックモデル <small>（Advisor OFF時）</small></label>
+          <select id="model-select" class="setting-select">
+            <option value="opus">Claude Opus 4.6（最高品質）</option>
+            <option value="sonnet">Claude Sonnet 4.6（コスト重視）</option>
+          </select>
+          <p class="setting-hint">
+            Advisor ON: ~$0.43/ゲーム ／ Opus単体: ~$1.29/ゲーム ／ Sonnet単体: ~$0.25/ゲーム
+          </p>
+        </div>
+      </div>
+
+      <!-- 画像生成タブ -->
+      <div class="settings-panel" id="settings-panel-image">
+        <div class="setting-item">
+          <label for="gemini-api-key">🔑 Google Gemini API Key</label>
+          <input type="password" id="gemini-api-key" placeholder="AIzaSy...">
+          <p class="setting-hint">
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+            でAPIキーを取得できます
+          </p>
+          <a href="setup.html#gemini-section" target="_blank" class="guide-link-btn">📖 取得方法をステップで見る</a>
+        </div>
+        <div class="setting-item">
+          <label for="image-model-select">🤖 画像生成モデル</label>
+          <select id="image-model-select" class="setting-select">
+            <option value="flash">Flash 3.1 Image（高速・推奨）</option>
+            <option value="pro">Pro 3 Image（高品質・低速）</option>
+          </select>
+          <p class="setting-hint">
+            Flash: ~$0.03/ゲーム ／ Pro: ~$0.08/ゲーム
+          </p>
+        </div>
+        <div class="setting-item">
+          <label>🖼️ 画像生成</label>
+          <div class="switch-container">
+            <div class="switch on" id="switch-image-enabled">
+              <div class="switch-thumb"></div>
+            </div>
+            <span class="switch-label" id="switch-label">有効</span>
+          </div>
+          <p class="setting-hint">
+            OFFでもテキストのみでプレイ可能です
+          </p>
+        </div>
+      </div>
+
+      <button id="btn-save-settings" class="btn btn-primary">💾 保存</button>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: 事件簿（プレイ履歴）                   -->
+  <!-- ============================================ -->
+  <div id="modal-history" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-lg">
+      <button class="modal-close" id="btn-history-close">✕</button>
+      <h2 class="modal-title">📁 事件簿</h2>
+      <div id="history-list" class="history-list">
+        <p class="history-empty">まだ事件記録がありません</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast通知 -->
+  <div id="toast" class="toast" style="display:none;">
+    <span id="toast-text"></span>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

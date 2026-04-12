@@ -1,0 +1,9 @@
+{
+  "name": "ai-detective",
+  "version": "3.1.0",
+  "description": "AI探偵団 — AIミステリーシナリオ自動生成ゲーム",
+  "private": true,
+  "scripts": {
+    "dev": "npx http-server . -p 3456 --cors -c-1"
+  }
+}
