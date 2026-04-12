@@ -396,6 +396,44 @@ ${scenario.solution.timeline ? `\n時系列: ${scenario.solution.timeline}` : ''
     rank: rank.title
   });
 
+  // Sprint 5: MPモードUI調整
+  const isMp = typeof window.Multiplayer !== 'undefined' && window.Multiplayer.isActive();
+  const newCaseBtn = $('#btn-new-case');
+  const backTitleBtn = $('#btn-back-title');
+  const shareSection = document.querySelector('.share-section');
+  const submissionBar = $('#mp-submission-bar');
+  const rankingContainer = $('#mp-ranking-container');
+
+  if (isMp) {
+    // ボタンテキスト変更
+    newCaseBtn.innerHTML = '🏠 ロビーに戻る';
+    backTitleBtn.innerHTML = '🚪 マルチプレイを終了';
+    // シェアセクション非表示
+    if (shareSection) shareSection.style.display = 'none';
+    // 提出状況バー初期表示
+    const totalPlayers = window.Multiplayer.state.players.length;
+    const submitted = Object.keys(window.Multiplayer.state.submissions).length;
+    if (submissionBar) {
+      submissionBar.innerHTML = `
+        <div class="submission-progress">
+          <span>提出状況: ${submitted} / ${totalPlayers}</span>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${(submitted / totalPlayers) * 100}%"></div>
+          </div>
+        </div>
+      `;
+    }
+    // ランキングコンテナリセット（全員提出後に注入される）
+    if (rankingContainer) rankingContainer.innerHTML = '';
+  } else {
+    // ソロモード: 通常テキスト
+    newCaseBtn.innerHTML = '🔍 新しい事件に挑む';
+    backTitleBtn.innerHTML = '🏠 タイトルに戻る';
+    if (shareSection) shareSection.style.display = '';
+    if (submissionBar) submissionBar.innerHTML = '';
+    if (rankingContainer) rankingContainer.innerHTML = '';
+  }
+
   showScreen('result');
 }
 

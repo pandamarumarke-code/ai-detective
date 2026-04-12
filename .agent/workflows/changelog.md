@@ -1,5 +1,12 @@
 # AI探偵団 Changelog
 
+## 2026-04-13 00:25 — Sprint 4: 戦績保存・ルーム退出処理
+- **ステータス**: ✅ 完了（デプロイ済み）
+- **変更ファイル**:
+  - `js/multiplayer.js` — saveGameResults, finishGame, returnToLobby, returnToTitle, _resetState追加
+  - `js/app.js` — 結果画面ボタンMP分岐、onAllSubmittedで戦績保存、退出確認ダイアログ
+- **機能**: 戦績DB保存、ルーム終了処理、退出確認ダイアログ、結果画面→ロビー復帰
+
 ## 2026-04-13 00:05 — Sprint 3: マルチプレイ回答同期・ランキング
 - **ステータス**: ✅ 完了（デプロイ済み）
 - **変更ファイル**:
