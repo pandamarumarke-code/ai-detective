@@ -123,14 +123,14 @@ export const DIFFICULTIES = {
 // ================================================
 export const MODELS = {
   opus: {
-    id: 'claude-opus-4-6-20260401',
+    id: 'claude-opus-4-6',
     name: 'Claude Opus 4.6',
     description: '最高品質（推奨）',
     inputCost: 5.0,   // $/1M tokens
     outputCost: 25.0   // $/1M tokens
   },
   sonnet: {
-    id: 'claude-sonnet-4-6-20260401',
+    id: 'claude-sonnet-4-6',
     name: 'Claude Sonnet 4.6',
     description: 'コスト重視',
     inputCost: 3.0,
@@ -142,8 +142,8 @@ export const MODELS = {
 // Advisor Tool設定（Opus=アドバイザー、Sonnet=実行者）
 // ================================================
 export const ADVISOR_CONFIG = {
-  executor: 'claude-sonnet-4-6-20260401',
-  advisor: 'claude-opus-4-6-20260401',
+  executor: 'claude-sonnet-4-6',
+  advisor: 'claude-opus-4-6',
   betaHeader: 'advisor-tool-2026-03-01',
   caching: { type: 'ephemeral', ttl: '5m' },
   maxUsesPerCall: {
