@@ -398,12 +398,8 @@ function setupEventListeners() {
   }
 
   // ---- シェアボタン（導入画面） ----
-  $('#btn-intro-share-copy').addEventListener('click', () => handleShare(false, '#btn-intro-share-copy'));
-  const introNativeShareBtn = $('#btn-intro-share-native');
-  if (navigator.share) {
-    introNativeShareBtn.style.display = '';
-    introNativeShareBtn.addEventListener('click', () => handleShare(true, '#btn-intro-share-native'));
-  }
+  // Web Share API対応ならネイティブ共有、非対応ならクリップボードコピー
+  $('#btn-intro-share').addEventListener('click', () => handleShare(!!navigator.share, '#btn-intro-share'));
 
   // ---- 共有シナリオ受信画面 ----
   $('#btn-play-shared').addEventListener('click', startSharedGame);
