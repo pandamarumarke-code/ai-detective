@@ -1,5 +1,21 @@
 # AI探偵団 Changelog
 
+## 2026-04-13 02:56 — v5.0 ゲームデザイン抜本改善（ラテラルシンキング × CWFモデル）
+- **ステータス**: ✅ 完了（デプロイ済み・E2Eテスト合格）
+- **方針**: ラテラルシンキングで5つのフィードバックの根本原因「受動的な体験」を特定し、CWFモデルに則って設計・実装
+- **Sprint 1: シナリオDNA + 解答チェーン検証**
+  - `constants.js` — SCENARIO_DNA_OPTIONS(動機8種/トリック8種/ツイスト6種)追加、buildSolvabilityCheckPrompt新規
+  - `claude.js` — Pass 5: AIが「探偵」としてカード情報のみで推理する解答チェーン検証追加
+  - `app.js` — DNA生成(過去3ゲーム非重複保証) + localStorage管理
+- **Sprint 2: フォーカスエリア + 推理メモ**
+  - `constants.js` — SCENARIO_SCHEMA に focus_area/focus_label 追加（必須フィールド化）
+  - `cards.js` — カード表面にフォーカスエリアラベル表示
+  - `index.html` — 推理メモ(折りたたみ式 + 回答画面参照)
+  - `renderer.js` — 回答画面で推理メモの参照表示
+  - `store.js` — deductionMemo state管理
+  - `style.css` — フォーカスラベル + 推理メモCSS
+- **変更ファイル数**: 8ファイル（298行追加、27行削除）
+
 ## 2026-04-13 02:34 — ゲームデザイン根本改善（フィードバック対応）
 - **ステータス**: ✅ 完了（デプロイ済み・E2Eテスト合格）
 - **変更ファイル**:
