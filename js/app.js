@@ -259,11 +259,13 @@ async function submitAnswer() {
 }
 
 /** シェアリンクを生成 */
-async function handleShare(useNativeShare) {
+async function handleShare(useNativeShare, btnId) {
   const { scenario, theme, difficulty } = store.state;
   if (!scenario) return;
 
-  const btn = useNativeShare ? $('#btn-share-native') : $('#btn-share-copy');
+  // btnIdが指定されていればそのボタンを使う（導入画面用）
+  const btn = btnId ? $(btnId) : (useNativeShare ? $('#btn-share-native') : $('#btn-share-copy'));
+  if (!btn) return;
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = '⏳ 生成中...';
@@ -387,12 +389,20 @@ function setupEventListeners() {
     R.showScreen('title');
   });
 
-  // ---- シェアボタン ----
+  // ---- シェアボタン（結果画面） ----
   $('#btn-share-copy').addEventListener('click', () => handleShare(false));
   const nativeShareBtn = $('#btn-share-native');
   if (navigator.share) {
     nativeShareBtn.style.display = '';
     nativeShareBtn.addEventListener('click', () => handleShare(true));
+  }
+
+  // ---- シェアボタン（導入画面） ----
+  $('#btn-intro-share-copy').addEventListener('click', () => handleShare(false, '#btn-intro-share-copy'));
+  const introNativeShareBtn = $('#btn-intro-share-native');
+  if (navigator.share) {
+    introNativeShareBtn.style.display = '';
+    introNativeShareBtn.addEventListener('click', () => handleShare(true, '#btn-intro-share-native'));
   }
 
   // ---- 共有シナリオ受信画面 ----
