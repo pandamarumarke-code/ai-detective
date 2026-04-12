@@ -5,11 +5,8 @@
 // @depends   supabase.js, store.js, renderer.js
 // @exports   Multiplayer (global)
 // @consumers app.js (イベントリスナーから呼び出し)
-// @updated   2026-04-12
+// @updated   2026-04-12 Sprint 2
 // ================================================
-
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
 
 const AVATAR_OPTIONS = ['🕵️', '🔍', '🧐', '👀', '🎭', '🦊', '🐻', '🐼', '🦉', '🐱', '🐶', '🐰'];
 
@@ -23,24 +20,41 @@ const Multiplayer = {
     isHost: false,
     playerId: null,
     players: [],
-    connected: false
+    connected: false,
+    mpMode: false,       // マルチプレイモード中か
+    theme: 'classic',
+    difficulty: 'normal'
+  },
+
+  // 外部コールバック（app.jsから注入）
+  _callbacks: {
+    onGameStart: null,      // ゲーム開始（シナリオ生成トリガー）
+    onScenarioReady: null,  // シナリオ受信完了
+    onGenProgress: null,    // 生成進捗
+    showScreen: null,       // 画面遷移
+    showToast: null         // トースト通知
+  },
+
+  /** app.jsからコールバックを登録 */
+  registerCallbacks(cbs) {
+    Object.assign(this._callbacks, cbs);
   },
 
   // ================================================
   // 認証フロー
   // ================================================
 
-  /** ニックネーム入力 → 匿名ログイン */
   async login(nickname) {
     if (!nickname || nickname.trim().length === 0) {
       throw new Error('ニックネームを入力してください');
     }
-    nickname = nickname.trim().slice(0, 12); // 最大12文字
+    nickname = nickname.trim().slice(0, 12);
 
     const { auth } = window.SupabaseClient;
     const user = await auth.signInAnonymously(nickname);
     this.state.user = user;
     this.state.nickname = nickname;
+    this.state.mpMode = true;
     return user;
   },
 
@@ -50,6 +64,9 @@ const Multiplayer = {
 
   async createRoom(theme, difficulty) {
     const { rooms } = window.SupabaseClient;
+    this.state.theme = theme;
+    this.state.difficulty = difficulty;
+
     const room = await rooms.create({
       theme,
       difficulty,
@@ -61,9 +78,7 @@ const Multiplayer = {
     this.state.roomCode = room.room_code;
     this.state.isHost = true;
 
-    // Realtimeチャンネルに接続
     this._connectRealtime();
-
     return room;
   },
 
@@ -78,10 +93,10 @@ const Multiplayer = {
     this.state.roomId = room.id;
     this.state.roomCode = room.room_code;
     this.state.isHost = false;
+    this.state.theme = room.theme;
+    this.state.difficulty = room.difficulty;
 
-    // Realtimeチャンネルに接続
     this._connectRealtime();
-
     return room;
   },
 
@@ -99,18 +114,19 @@ const Multiplayer = {
       },
 
       onPresenceSync: (presenceState) => {
-        // プレゼンス同期 → プレイヤーリスト更新
         this._updatePlayerList(presenceState);
       },
 
       onPlayerJoin: (key, newPresences) => {
-        console.log(`👤 プレイヤー参加: ${newPresences[0]?.nickname}`);
-        this._showNotification(`${newPresences[0]?.nickname} が参加しました`);
+        const name = newPresences[0]?.nickname || '不明';
+        console.log(`👤 参加: ${name}`);
+        this._showNotification(`${name} が参加しました`);
       },
 
       onPlayerLeave: (key, leftPresences) => {
-        console.log(`👤 プレイヤー退出: ${leftPresences[0]?.nickname}`);
-        this._showNotification(`${leftPresences[0]?.nickname} が退出しました`);
+        const name = leftPresences[0]?.nickname || '不明';
+        console.log(`👤 退出: ${name}`);
+        this._showNotification(`${name} が退出しました`);
       },
 
       onGameStart: (data) => {
@@ -124,15 +140,15 @@ const Multiplayer = {
       },
 
       onGenProgress: (data) => {
-        this._onGenProgress(data);
+        this._callbacks.onGenProgress?.(data.step, data.status, data.detail);
       },
 
       onPlayerSubmitted: (data) => {
-        this._onPlayerSubmitted(data);
+        this._showNotification(`${data.nickname} が推理を提出しました (${data.submitted}/${data.total})`);
       },
 
       onResultsReady: (data) => {
-        this._onResultsReady(data);
+        console.log('📊 結果発表:', data);
       },
 
       onChat: (data) => {
@@ -145,7 +161,6 @@ const Multiplayer = {
   // UI更新
   // ================================================
 
-  /** プレイヤーリストの更新 */
   _updatePlayerList(presenceState) {
     const players = [];
     for (const [userId, presences] of Object.entries(presenceState)) {
@@ -161,9 +176,8 @@ const Multiplayer = {
     this.renderWaitingRoom();
   },
 
-  /** 待機室のレンダリング */
   renderWaitingRoom() {
-    const container = $('#waiting-players');
+    const container = document.querySelector('#waiting-players');
     if (!container) return;
 
     const avatars = AVATAR_OPTIONS;
@@ -175,23 +189,19 @@ const Multiplayer = {
       </div>
     `).join('');
 
-    // プレイヤー数表示
-    const countEl = $('#player-count');
-    if (countEl) {
-      countEl.textContent = `${this.state.players.length} / 4`;
-    }
+    const countEl = document.querySelector('#player-count');
+    if (countEl) countEl.textContent = `${this.state.players.length} / 4`;
 
-    // ホストのみ開始ボタン表示
-    const startBtn = $('#btn-mp-start-game');
+    // ホストのみ開始ボタン表示、1人でもテスト可能（本番は2人以上推奨）
+    const startBtn = document.querySelector('#btn-mp-start-game');
     if (startBtn) {
       startBtn.style.display = this.state.isHost ? '' : 'none';
-      startBtn.disabled = this.state.players.length < 2;
+      startBtn.disabled = false; // 1人でもテスト可能
     }
   },
 
-  /** 通知表示 */
   _showNotification(message) {
-    const container = $('#waiting-chat');
+    const container = document.querySelector('#waiting-chat');
     if (!container) return;
     const msgEl = document.createElement('div');
     msgEl.className = 'chat-system';
@@ -204,42 +214,41 @@ const Multiplayer = {
   // ゲームイベントハンドラ
   // ================================================
 
-  _onGameStart(data) {
-    // 生成画面に遷移
-    $('#screen-waiting').style.display = 'none';
-    $('#screen-generating').style.display = '';
+  /** ホストが「事件開始」→ 全員に通知 */
+  async startGame() {
+    if (!this.state.isHost) return;
+
+    const { realtime, rooms } = window.SupabaseClient;
+
+    // ルーム状態を playing に更新
+    await rooms.updateStatus(this.state.roomId, 'playing');
+
+    // 全員に game_start を送信
+    realtime.broadcast('game_start', {
+      theme: this.state.theme,
+      difficulty: this.state.difficulty,
+      hostNickname: this.state.nickname
+    });
+
+    // ホスト自身もゲーム開始処理を実行
+    this._onGameStart({
+      theme: this.state.theme,
+      difficulty: this.state.difficulty
+    });
   },
 
-  _onGenProgress(data) {
-    // 生成進捗の更新（ゲスト側）
-    if (typeof R !== 'undefined' && R.updateGenStep) {
-      R.updateGenStep(data.step, data.status, data.detail);
-    }
+  _onGameStart(data) {
+    // 生成画面に遷移（showScreen統一）
+    this._callbacks.showScreen?.('generating');
   },
 
   _onScenarioReady(data) {
-    // シナリオをストアに設定して導入画面へ
-    if (typeof store !== 'undefined') {
-      store.update({ scenario: data.scenario });
-      store.incrementCase();
-      if (typeof R !== 'undefined') {
-        R.renderIntro();
-        R.showScreen('game');
-      }
-    }
-  },
-
-  _onPlayerSubmitted(data) {
-    this._showNotification(`${data.nickname} が推理を提出しました`);
-  },
-
-  _onResultsReady(data) {
-    // 全員の結果を表示
-    console.log('📊 結果発表:', data);
+    // シナリオをapp.jsのコールバック経由で処理
+    this._callbacks.onScenarioReady?.(data);
   },
 
   _onChat(data) {
-    const container = $('#waiting-chat');
+    const container = document.querySelector('#waiting-chat');
     if (!container) return;
     const msgEl = document.createElement('div');
     msgEl.className = 'chat-message';
@@ -249,10 +258,38 @@ const Multiplayer = {
   },
 
   // ================================================
+  // ホスト: シナリオ生成完了後にBroadcast
+  // ================================================
+
+  broadcastScenarioReady(scenario) {
+    const { realtime, rooms } = window.SupabaseClient;
+
+    // solutionを除外してBroadcast
+    const scenarioForBroadcast = { ...scenario };
+    delete scenarioForBroadcast.solution;
+
+    realtime.broadcast('scenario_ready', {
+      scenario: scenarioForBroadcast,
+      theme: this.state.theme,
+      difficulty: this.state.difficulty
+    });
+
+    // DBにも保存
+    rooms.saveScenario(this.state.roomId, scenario).catch(e =>
+      console.warn('シナリオDB保存エラー:', e)
+    );
+  },
+
+  /** 生成進捗をBroadcast */
+  broadcastGenProgress(step, status, detail) {
+    const { realtime } = window.SupabaseClient;
+    realtime.broadcast('gen_progress', { step, status, detail });
+  },
+
+  // ================================================
   // アクション
   // ================================================
 
-  /** チャットメッセージ送信 */
   sendChat(message) {
     if (!message.trim()) return;
     const { realtime } = window.SupabaseClient;
@@ -263,7 +300,6 @@ const Multiplayer = {
     });
   },
 
-  /** ルームコードをクリップボードにコピー */
   async copyRoomCode() {
     try {
       await navigator.clipboard.writeText(this.state.roomCode);
@@ -273,7 +309,6 @@ const Multiplayer = {
     }
   },
 
-  /** ルームから退出 */
   async leaveRoom() {
     const { rooms, realtime } = window.SupabaseClient;
     if (this.state.roomId && this.state.user) {
@@ -287,8 +322,14 @@ const Multiplayer = {
       isHost: false,
       playerId: null,
       players: [],
-      connected: false
+      connected: false,
+      mpMode: false
     };
+  },
+
+  /** マルチプレイモード中かどうか */
+  isActive() {
+    return this.state.mpMode && this.state.connected;
   },
 
   // ================================================

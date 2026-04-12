@@ -405,13 +405,31 @@ function setupEventListeners() {
   // マルチプレイヤーモード イベントリスナー
   // ============================================
 
+  // Multiplayerコールバック登録（画面遷移・シナリオ受信を統合）
+  Multiplayer.registerCallbacks({
+    showScreen: (screenId) => R.showScreen(screenId),
+    showToast: (msg) => showToast(msg),
+    onGenProgress: (step, status, detail) => R.updateGenStep(step, status, detail),
+    onScenarioReady: (data) => {
+      // ゲストがシナリオを受信した場合
+      store.update({
+        scenario: data.scenario,
+        theme: data.theme,
+        difficulty: data.difficulty
+      });
+      store.incrementCase();
+      R.renderIntro();
+      R.showScreen('game');
+    }
+  });
+
   // タイトル画面: みんなで遊ぶ
   $('#btn-multiplayer').addEventListener('click', () => {
-    showMpScreen('screen-nickname');
+    R.showScreen('nickname');
   });
 
   // ニックネーム入力
-  $('#btn-nick-back').addEventListener('click', () => showMpScreen('screen-title'));
+  $('#btn-nick-back').addEventListener('click', () => R.showScreen('title'));
   $('#btn-nick-confirm').addEventListener('click', async () => {
     const nickname = $('#input-nickname').value.trim();
     if (!nickname) { alert('ニックネームを入力してください'); return; }
@@ -419,7 +437,7 @@ function setupEventListeners() {
       $('#btn-nick-confirm').disabled = true;
       $('#btn-nick-confirm').textContent = '⏳ 接続中...';
       await Multiplayer.login(nickname);
-      showMpScreen('screen-lobby');
+      R.showScreen('lobby');
     } catch (e) {
       alert('接続エラー: ' + e.message);
     } finally {
@@ -427,18 +445,15 @@ function setupEventListeners() {
       $('#btn-nick-confirm').textContent = '決定';
     }
   });
-  // Enterキーでも確定
   $('#input-nickname').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#btn-nick-confirm').click();
   });
 
   // ロビー
-  $('#btn-lobby-back').addEventListener('click', () => showMpScreen('screen-nickname'));
+  $('#btn-lobby-back').addEventListener('click', () => R.showScreen('nickname'));
+  $('#btn-create-room').addEventListener('click', () => R.showScreen('mp-config'));
 
-  // ルーム作成ボタン → テーマ/難易度選択画面
-  $('#btn-create-room').addEventListener('click', () => showMpScreen('screen-mp-config'));
-
-  // ルーム参加ボタン
+  // ルーム参加
   $('#btn-join-room').addEventListener('click', async () => {
     const code = $('#input-room-code').value.trim().toUpperCase();
     if (code.length !== 4) { alert('4文字のルームコードを入力してください'); return; }
@@ -447,7 +462,7 @@ function setupEventListeners() {
       $('#btn-join-room').textContent = '⏳ 参加中...';
       await Multiplayer.joinRoom(code);
       $('#display-room-code').textContent = code;
-      showMpScreen('screen-waiting');
+      R.showScreen('waiting');
     } catch (e) {
       alert('参加エラー: ' + e.message);
     } finally {
@@ -455,19 +470,22 @@ function setupEventListeners() {
       $('#btn-join-room').textContent = '参加する';
     }
   });
-  // Enterキーでも参加
   $('#input-room-code').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#btn-join-room').click();
   });
 
-  // MPルーム設定画面
-  $('#btn-mp-config-back').addEventListener('click', () => showMpScreen('screen-lobby'));
-
-  // MPテーマ選択
+  // MPルーム設定
+  $('#btn-mp-config-back').addEventListener('click', () => R.showScreen('lobby'));
   $$('#mp-theme-grid .config-card').forEach(card => {
     card.addEventListener('click', () => {
       $$('#mp-theme-grid .config-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
+    });
+  });
+  $$('#screen-mp-config .difficulty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#screen-mp-config .difficulty-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
     });
   });
 
@@ -482,7 +500,7 @@ function setupEventListeners() {
       $('#btn-mp-create-confirm').textContent = '⏳ 作成中...';
       const room = await Multiplayer.createRoom(theme, difficulty);
       $('#display-room-code').textContent = room.room_code;
-      showMpScreen('screen-waiting');
+      R.showScreen('waiting');
     } catch (e) {
       alert('ルーム作成エラー: ' + e.message);
     } finally {
@@ -491,21 +509,13 @@ function setupEventListeners() {
     }
   });
 
-  // MP難易度選択
-  $$('#screen-mp-config .difficulty-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      $$('#screen-mp-config .difficulty-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    });
-  });
-
   // 待機室: コードコピー
   $('#btn-copy-code').addEventListener('click', async () => {
     const ok = await Multiplayer.copyRoomCode();
     if (ok) showToast('ルームコードをコピーしました！');
   });
 
-  // 待機室: チャット送信
+  // 待機室: チャット
   $('#btn-send-chat').addEventListener('click', () => {
     const input = $('#input-chat');
     Multiplayer.sendChat(input.value);
@@ -515,30 +525,65 @@ function setupEventListeners() {
     if (e.key === 'Enter') $('#btn-send-chat').click();
   });
 
-  // 待機室: ゲーム開始（ホストのみ）
-  $('#btn-mp-start-game').addEventListener('click', () => {
-    // TODO: Sprint 2で実装 - シナリオ生成 + Broadcast
-    showToast('🎮 事件を生成中...');
+  // 待機室: ゲーム開始（ホストのみ）→ シナリオ生成 + Broadcast
+  $('#btn-mp-start-game').addEventListener('click', async () => {
+    if (!Multiplayer.state.isHost) return;
+    try {
+      // ゲーム開始をBroadcast（全員が生成画面に遷移）
+      await Multiplayer.startGame();
+
+      // ホストがシナリオを生成
+      R.resetGenSteps();
+      store.resetGame();
+      store.update({
+        theme: Multiplayer.state.theme,
+        difficulty: Multiplayer.state.difficulty
+      });
+
+      const scenario = await generateScenario({
+        apiKey: 'FREE',
+        modelId: 'opus',
+        theme: Multiplayer.state.theme,
+        difficulty: Multiplayer.state.difficulty,
+        advisorEnabled: false,
+        isFreeMode: true,
+        onProgress: (step, status, detail) => {
+          R.updateGenStep(step, status, detail);
+          // 全プレイヤーに進捗をBroadcast
+          Multiplayer.broadcastGenProgress(step, status, detail);
+        }
+      });
+
+      store.update({ scenario });
+      store.consumeFreePlay();
+
+      // 画像生成スキップ（マルチプレイでは速度優先）
+      R.updateGenStep(6, 'done');
+      R.updateGenStep(7, 'done');
+      R.updateGenStep(8, 'done');
+
+      // 全プレイヤーにシナリオをBroadcast
+      Multiplayer.broadcastScenarioReady(scenario);
+
+      // ホスト自身も導入画面へ
+      store.incrementCase();
+      setTimeout(() => {
+        R.renderIntro();
+        R.showScreen('game');
+      }, 500);
+
+    } catch (e) {
+      console.error('MP生成エラー:', e);
+      alert('シナリオ生成エラー: ' + e.message);
+      R.showScreen('waiting');
+    }
   });
 
   // 待機室: 退出
   $('#btn-mp-leave').addEventListener('click', async () => {
     await Multiplayer.leaveRoom();
-    showMpScreen('screen-lobby');
+    R.showScreen('lobby');
   });
-
-  /** マルチプレイ画面遷移ヘルパー */
-  function showMpScreen(screenId) {
-    const mpScreens = ['screen-title', 'screen-nickname', 'screen-lobby', 'screen-mp-config', 'screen-waiting'];
-    mpScreens.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = id === screenId ? '' : 'none';
-    });
-    // タイトル画面に戻る場合はR.showScreenを使う
-    if (screenId === 'screen-title') {
-      R.showScreen('title');
-    }
-  }
 
   /** トースト通知 */
   function showToast(msg) {
