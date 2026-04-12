@@ -69,9 +69,12 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   }
 
   if (schema) {
+    // schema は {name, description, strict, schema: {type:'object',...}} 形式
+    // Claude API は output_format.schema に純粋な JSON Schema を期待
+    const pureSchema = schema.schema || schema;
     body.output_format = {
       type: 'json_schema',
-      schema: schema
+      schema: pureSchema
     };
   }
 
