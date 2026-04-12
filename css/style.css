@@ -2554,3 +2554,105 @@ body {
   padding: var(--space-xs) var(--space-md);
   font-size: 0.8rem;
 }
+
+/* ================================================
+   マルチプレイ — みんなで遊ぶボタン
+   ================================================ */
+.btn-glow-blue {
+  background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(41, 128, 185, 0.3);
+  border: 1px solid rgba(41, 128, 185, 0.5);
+}
+.btn-glow-blue:hover {
+  box-shadow: 0 0 30px rgba(41, 128, 185, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ニックネーム入力 */
+.nickname-container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-xl);
+  text-align: center;
+}
+.section-desc { color: var(--gold-200); margin-bottom: var(--space-lg); font-size: 0.9rem; }
+.nickname-form { display: flex; gap: var(--space-sm); }
+.input-text {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--card-bg);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-text:focus { border-color: var(--gold-400); box-shadow: 0 0 10px rgba(255,193,7,.15); }
+.input-text::placeholder { color: var(--text-muted); }
+
+/* ロビー */
+.lobby-container { max-width: 700px; margin: 0 auto; padding: var(--space-xl); }
+.lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-top: var(--space-lg); }
+.lobby-card {
+  background: var(--card-bg); border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg); padding: var(--space-lg); text-align: center;
+  transition: all .3s ease;
+}
+.lobby-card:hover { border-color: var(--gold-400); box-shadow: 0 4px 20px rgba(255,193,7,.1); }
+.lobby-card-icon { font-size: 2.5rem; display: block; margin-bottom: var(--space-sm); }
+.lobby-card h3 { color: var(--gold-300); margin-bottom: var(--space-xs); font-size: 1.1rem; }
+.lobby-card p { color: var(--text-muted); font-size: .85rem; margin-bottom: var(--space-md); }
+.join-form { display: flex; gap: var(--space-xs); }
+.input-code {
+  text-transform: uppercase; text-align: center; font-size: 1.3rem;
+  font-weight: 700; letter-spacing: .3em; font-family: 'JetBrains Mono', monospace; max-width: 140px;
+}
+
+/* 待機室 */
+.waiting-container { max-width: 700px; margin: 0 auto; padding: var(--space-xl); }
+.room-code-display {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-md);
+  background: var(--card-bg); border: 2px solid var(--gold-400);
+  border-radius: var(--radius-lg); padding: var(--space-md) var(--space-lg); margin-bottom: var(--space-lg);
+}
+.room-code-label { color: var(--text-muted); font-size: .85rem; }
+.room-code-value {
+  font-size: 2rem; font-weight: 900; letter-spacing: .4em;
+  color: var(--gold-300); font-family: 'JetBrains Mono', monospace;
+}
+.waiting-players-section h3 { color: var(--gold-200); margin-bottom: var(--space-sm); font-size: .95rem; }
+.waiting-players { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.waiting-player {
+  display: flex; align-items: center; gap: var(--space-sm);
+  background: var(--card-bg); border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md); padding: var(--space-sm) var(--space-md); transition: all .3s ease;
+}
+.waiting-player.is-me { border-color: var(--gold-400); background: rgba(255,193,7,.05); }
+.player-avatar { font-size: 1.5rem; }
+.player-name { color: var(--text-primary); font-weight: 600; }
+.player-badge {
+  margin-left: auto; font-size: .7rem; color: var(--gold-400);
+  background: rgba(255,193,7,.1); padding: 2px 8px; border-radius: 10px;
+}
+
+/* チャット */
+.waiting-chat-section h3 { color: var(--gold-200); margin-bottom: var(--space-sm); font-size: .95rem; }
+.waiting-chat {
+  background: var(--card-bg); border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md); padding: var(--space-sm);
+  height: 150px; overflow-y: auto; margin-bottom: var(--space-sm);
+}
+.chat-message { color: var(--text-secondary); font-size: .85rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+.chat-message strong { color: var(--gold-300); }
+.chat-system { color: var(--text-muted); font-size: .8rem; padding: 3px 0; font-style: italic; }
+.chat-input-row { display: flex; gap: var(--space-xs); }
+.chat-input-row .input-text { flex: 1; }
+.waiting-actions { display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-lg); }
+
+@media (max-width: 640px) {
+  .lobby-actions { grid-template-columns: 1fr; }
+  .waiting-players { grid-template-columns: 1fr; }
+  .room-code-value { font-size: 1.5rem; }
+}

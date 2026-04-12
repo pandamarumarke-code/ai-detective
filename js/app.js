@@ -401,6 +401,153 @@ function setupEventListeners() {
   // Web Share API対応ならネイティブ共有、非対応ならクリップボードコピー
   $('#btn-intro-share').addEventListener('click', () => handleShare(!!navigator.share, '#btn-intro-share'));
 
+  // ============================================
+  // マルチプレイヤーモード イベントリスナー
+  // ============================================
+
+  // タイトル画面: みんなで遊ぶ
+  $('#btn-multiplayer').addEventListener('click', () => {
+    showMpScreen('screen-nickname');
+  });
+
+  // ニックネーム入力
+  $('#btn-nick-back').addEventListener('click', () => showMpScreen('screen-title'));
+  $('#btn-nick-confirm').addEventListener('click', async () => {
+    const nickname = $('#input-nickname').value.trim();
+    if (!nickname) { alert('ニックネームを入力してください'); return; }
+    try {
+      $('#btn-nick-confirm').disabled = true;
+      $('#btn-nick-confirm').textContent = '⏳ 接続中...';
+      await Multiplayer.login(nickname);
+      showMpScreen('screen-lobby');
+    } catch (e) {
+      alert('接続エラー: ' + e.message);
+    } finally {
+      $('#btn-nick-confirm').disabled = false;
+      $('#btn-nick-confirm').textContent = '決定';
+    }
+  });
+  // Enterキーでも確定
+  $('#input-nickname').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#btn-nick-confirm').click();
+  });
+
+  // ロビー
+  $('#btn-lobby-back').addEventListener('click', () => showMpScreen('screen-nickname'));
+
+  // ルーム作成ボタン → テーマ/難易度選択画面
+  $('#btn-create-room').addEventListener('click', () => showMpScreen('screen-mp-config'));
+
+  // ルーム参加ボタン
+  $('#btn-join-room').addEventListener('click', async () => {
+    const code = $('#input-room-code').value.trim().toUpperCase();
+    if (code.length !== 4) { alert('4文字のルームコードを入力してください'); return; }
+    try {
+      $('#btn-join-room').disabled = true;
+      $('#btn-join-room').textContent = '⏳ 参加中...';
+      await Multiplayer.joinRoom(code);
+      $('#display-room-code').textContent = code;
+      showMpScreen('screen-waiting');
+    } catch (e) {
+      alert('参加エラー: ' + e.message);
+    } finally {
+      $('#btn-join-room').disabled = false;
+      $('#btn-join-room').textContent = '参加する';
+    }
+  });
+  // Enterキーでも参加
+  $('#input-room-code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#btn-join-room').click();
+  });
+
+  // MPルーム設定画面
+  $('#btn-mp-config-back').addEventListener('click', () => showMpScreen('screen-lobby'));
+
+  // MPテーマ選択
+  $$('#mp-theme-grid .config-card').forEach(card => {
+    card.addEventListener('click', () => {
+      $$('#mp-theme-grid .config-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+
+  // MPルーム作成確定
+  $('#btn-mp-create-confirm').addEventListener('click', async () => {
+    const themeCard = document.querySelector('#mp-theme-grid .config-card.selected');
+    const diffBtn = document.querySelector('#screen-mp-config .difficulty-btn.selected');
+    const theme = themeCard?.dataset.theme || 'classic';
+    const difficulty = diffBtn?.dataset.difficulty || 'normal';
+    try {
+      $('#btn-mp-create-confirm').disabled = true;
+      $('#btn-mp-create-confirm').textContent = '⏳ 作成中...';
+      const room = await Multiplayer.createRoom(theme, difficulty);
+      $('#display-room-code').textContent = room.room_code;
+      showMpScreen('screen-waiting');
+    } catch (e) {
+      alert('ルーム作成エラー: ' + e.message);
+    } finally {
+      $('#btn-mp-create-confirm').disabled = false;
+      $('#btn-mp-create-confirm').textContent = 'ルームを作成する';
+    }
+  });
+
+  // MP難易度選択
+  $$('#screen-mp-config .difficulty-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('#screen-mp-config .difficulty-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  // 待機室: コードコピー
+  $('#btn-copy-code').addEventListener('click', async () => {
+    const ok = await Multiplayer.copyRoomCode();
+    if (ok) showToast('ルームコードをコピーしました！');
+  });
+
+  // 待機室: チャット送信
+  $('#btn-send-chat').addEventListener('click', () => {
+    const input = $('#input-chat');
+    Multiplayer.sendChat(input.value);
+    input.value = '';
+  });
+  $('#input-chat').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#btn-send-chat').click();
+  });
+
+  // 待機室: ゲーム開始（ホストのみ）
+  $('#btn-mp-start-game').addEventListener('click', () => {
+    // TODO: Sprint 2で実装 - シナリオ生成 + Broadcast
+    showToast('🎮 事件を生成中...');
+  });
+
+  // 待機室: 退出
+  $('#btn-mp-leave').addEventListener('click', async () => {
+    await Multiplayer.leaveRoom();
+    showMpScreen('screen-lobby');
+  });
+
+  /** マルチプレイ画面遷移ヘルパー */
+  function showMpScreen(screenId) {
+    const mpScreens = ['screen-title', 'screen-nickname', 'screen-lobby', 'screen-mp-config', 'screen-waiting'];
+    mpScreens.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = id === screenId ? '' : 'none';
+    });
+    // タイトル画面に戻る場合はR.showScreenを使う
+    if (screenId === 'screen-title') {
+      R.showScreen('title');
+    }
+  }
+
+  /** トースト通知 */
+  function showToast(msg) {
+    const toast = $('#toast');
+    $('#toast-text').textContent = msg;
+    toast.style.display = '';
+    setTimeout(() => toast.style.display = 'none', 3000);
+  }
+
   // ---- 共有シナリオ受信画面 ----
   $('#btn-play-shared').addEventListener('click', startSharedGame);
   $('#btn-shared-back').addEventListener('click', () => {

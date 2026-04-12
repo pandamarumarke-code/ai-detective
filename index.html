@@ -31,6 +31,10 @@
             <span class="btn-icon">🔍</span>
             新しい事件に挑む
           </button>
+          <button id="btn-multiplayer" class="btn btn-secondary btn-glow-blue">
+            <span class="btn-icon">👥</span>
+            みんなで遊ぶ
+          </button>
           <button id="btn-history" class="btn btn-secondary">
             <span class="btn-icon">📁</span>
             事件簿を見る
@@ -487,11 +491,144 @@
     </div>
   </div>
 
+  <!-- ============================================ -->
+  <!-- SCREEN: ニックネーム入力                      -->
+  <!-- ============================================ -->
+  <div id="screen-nickname" class="screen" style="display:none;">
+    <div class="nickname-container">
+      <button class="btn-back" id="btn-nick-back">← 戻る</button>
+      <h2 class="section-title">👤 ニックネームを入力</h2>
+      <p class="section-desc">他のプレイヤーに表示される名前です</p>
+      <div class="nickname-form">
+        <input type="text" id="input-nickname" class="input-text" placeholder="例: 名探偵パンダ" maxlength="12" autocomplete="off">
+        <button id="btn-nick-confirm" class="btn btn-primary">決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: ロビー（ルーム作成/参加）              -->
+  <!-- ============================================ -->
+  <div id="screen-lobby" class="screen" style="display:none;">
+    <div class="lobby-container">
+      <button class="btn-back" id="btn-lobby-back">← 戻る</button>
+      <h2 class="section-title">🏠 ロビー</h2>
+      <div class="lobby-actions">
+        <div class="lobby-card">
+          <span class="lobby-card-icon">🏗️</span>
+          <h3>ルームを作る</h3>
+          <p>新しいルームを作成して友達を招待</p>
+          <button id="btn-create-room" class="btn btn-primary">作成する</button>
+        </div>
+        <div class="lobby-card">
+          <span class="lobby-card-icon">🚪</span>
+          <h3>ルームに参加</h3>
+          <p>ルームコードを入力して参加</p>
+          <div class="join-form">
+            <input type="text" id="input-room-code" class="input-text input-code" placeholder="ABCD" maxlength="4" autocomplete="off">
+            <button id="btn-join-room" class="btn btn-primary">参加する</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: ルーム設定（ホスト用）                 -->
+  <!-- ============================================ -->
+  <div id="screen-mp-config" class="screen" style="display:none;">
+    <div class="config-container">
+      <button class="btn-back" id="btn-mp-config-back">← 戻る</button>
+      <h2 class="section-title">🎭 事件を選ぶ</h2>
+      <div class="config-section">
+        <h3 class="config-label">🎭 テーマ</h3>
+        <div class="config-grid" id="mp-theme-grid">
+          <button class="config-card selected" data-theme="classic">
+            <span class="config-card-icon">🏛️</span>
+            <span class="config-card-name">クラシック</span>
+          </button>
+          <button class="config-card" data-theme="school">
+            <span class="config-card-icon">🏫</span>
+            <span class="config-card-name">学園</span>
+          </button>
+          <button class="config-card" data-theme="sf">
+            <span class="config-card-icon">🚀</span>
+            <span class="config-card-name">SF</span>
+          </button>
+          <button class="config-card" data-theme="japanese">
+            <span class="config-card-icon">⛩️</span>
+            <span class="config-card-name">和風</span>
+          </button>
+          <button class="config-card" data-theme="noir">
+            <span class="config-card-icon">🌃</span>
+            <span class="config-card-name">ノワール</span>
+          </button>
+          <button class="config-card" data-theme="fantasy">
+            <span class="config-card-icon">🧙</span>
+            <span class="config-card-name">ファンタジー</span>
+          </button>
+        </div>
+      </div>
+      <div class="config-section">
+        <h3 class="config-label">📊 難易度</h3>
+        <div class="difficulty-selector">
+          <button class="difficulty-btn" data-difficulty="easy">
+            <span class="difficulty-star">⭐</span>
+            <span class="difficulty-name">ビギナー</span>
+          </button>
+          <button class="difficulty-btn selected" data-difficulty="normal">
+            <span class="difficulty-star">⭐⭐</span>
+            <span class="difficulty-name">スタンダード</span>
+          </button>
+          <button class="difficulty-btn" data-difficulty="hard">
+            <span class="difficulty-star">⭐⭐⭐</span>
+            <span class="difficulty-name">ハード</span>
+          </button>
+        </div>
+      </div>
+      <button id="btn-mp-create-confirm" class="btn btn-primary btn-glow">ルームを作成する</button>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: 待機室                               -->
+  <!-- ============================================ -->
+  <div id="screen-waiting" class="screen" style="display:none;">
+    <div class="waiting-container">
+      <h2 class="section-title">🏠 待機室</h2>
+      <div class="room-code-display">
+        <span class="room-code-label">ルームコード</span>
+        <span class="room-code-value" id="display-room-code">----</span>
+        <button id="btn-copy-code" class="btn btn-ghost btn-sm" title="コードをコピー">📋</button>
+      </div>
+      <div class="waiting-players-section">
+        <h3>参加者 <span id="player-count">0 / 4</span></h3>
+        <div id="waiting-players" class="waiting-players"></div>
+      </div>
+      <div class="waiting-chat-section">
+        <h3>💬 チャット</h3>
+        <div id="waiting-chat" class="waiting-chat"></div>
+        <div class="chat-input-row">
+          <input type="text" id="input-chat" class="input-text" placeholder="メッセージを入力..." maxlength="200">
+          <button id="btn-send-chat" class="btn btn-primary btn-sm">送信</button>
+        </div>
+      </div>
+      <div class="waiting-actions">
+        <button id="btn-mp-start-game" class="btn btn-primary btn-glow" style="display:none;">🎮 事件を開始する</button>
+        <button id="btn-mp-leave" class="btn btn-ghost">退出する</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast通知 -->
   <div id="toast" class="toast" style="display:none;">
     <span id="toast-text"></span>
   </div>
 
+  <!-- Supabase SDK (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/multiplayer.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
