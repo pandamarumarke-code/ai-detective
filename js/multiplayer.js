@@ -79,6 +79,8 @@ const Multiplayer = {
     this.state.isHost = true;
 
     this._connectRealtime();
+    // 即座にUIを初期表示（Presenceを待たない）
+    this._initWaitingRoomUI();
     return room;
   },
 
@@ -97,6 +99,7 @@ const Multiplayer = {
     this.state.difficulty = room.difficulty;
 
     this._connectRealtime();
+    this._initWaitingRoomUI();
     return room;
   },
 
@@ -111,6 +114,8 @@ const Multiplayer = {
       onConnected: () => {
         this.state.connected = true;
         console.log('🔗 ルームに接続しました');
+        // 接続完了時に再レンダリング
+        this.renderWaitingRoom();
       },
 
       onPresenceSync: (presenceState) => {
@@ -176,9 +181,30 @@ const Multiplayer = {
     this.renderWaitingRoom();
   },
 
+  /** 待機室初期表示（Presenceを待たずに即座に表示） */
+  _initWaitingRoomUI() {
+    // ルームコード表示
+    const codeEl = document.querySelector('#display-room-code');
+    if (codeEl) codeEl.textContent = this.state.roomCode || '----';
+
+    // 自分自身をプレイヤーリストに仮追加
+    if (this.state.players.length === 0) {
+      this.state.players = [{
+        userId: this.state.user?.id,
+        nickname: this.state.nickname,
+        online: true
+      }];
+    }
+    this.renderWaitingRoom();
+  },
+
   renderWaitingRoom() {
     const container = document.querySelector('#waiting-players');
     if (!container) return;
+
+    // ルームコード表示も更新
+    const codeEl = document.querySelector('#display-room-code');
+    if (codeEl && this.state.roomCode) codeEl.textContent = this.state.roomCode;
 
     const avatars = AVATAR_OPTIONS;
     container.innerHTML = this.state.players.map((p, i) => `
