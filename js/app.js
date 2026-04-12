@@ -234,20 +234,38 @@ async function submitAnswer() {
     // 共有シナリオの場合: solutionを復号
     if (isSharedScenario && encSolution && encIv) {
       solution = await revealSharedSolution(scenario, encSolution, encIv);
-      // 復号したsolutionをシナリオに設定（結果表示で使用）
       store.update({ scenario: { ...scenario, solution } });
     } else {
       solution = scenario.solution;
     }
 
+    const isMp = typeof Multiplayer !== 'undefined' && Multiplayer.isActive();
+
     const result = await evaluateAnswer({
-      apiKey: isSharedScenario ? '' : apiKey,
+      apiKey: (isSharedScenario || isMp) ? '' : apiKey,
       modelId,
       solution,
       answers: store.state.playerAnswers,
-      advisorEnabled: store.state.advisorEnabled
+      advisorEnabled: isMp ? false : store.state.advisorEnabled
     });
     store.update({ result });
+
+    // マルチプレイの場合: 回答をBroadcastして他プレイヤーを待つ
+    if (isMp) {
+      const adjustedTotal = Math.max(0, result.total - (store.state.hintPenalty || 0));
+      Multiplayer.broadcastSubmission({
+        playerAnswers: store.state.playerAnswers,
+        score: adjustedTotal,
+        maxScore: result.max_total,
+        fullResult: result
+      });
+
+      // 結果画面は表示するが、ランキングは全員提出後に表示
+      R.renderResult();
+      btn.textContent = '✅ 提出済み（他の探偵を待っています...）';
+      return; // finallyでリセットしない
+    }
+
     R.renderResult();
   } catch (e) {
     console.error('採点エラー:', e);
@@ -420,6 +438,23 @@ function setupEventListeners() {
       store.incrementCase();
       R.renderIntro();
       R.showScreen('game');
+    },
+    onAllSubmitted: (rankings) => {
+      // 全員提出完了 → ランキングを結果画面に注入
+      const rankingEl = document.querySelector('#mp-ranking-container');
+      if (rankingEl) {
+        rankingEl.innerHTML = Multiplayer.renderRankingHTML();
+      } else {
+        // コンテナがなければ結果画面に追加
+        const resultScreen = document.querySelector('#screen-result');
+        if (resultScreen) {
+          const div = document.createElement('div');
+          div.id = 'mp-ranking-container';
+          div.innerHTML = Multiplayer.renderRankingHTML();
+          resultScreen.insertBefore(div, resultScreen.querySelector('.result-actions'));
+        }
+      }
+      showToast('🏆 全員の推理が揃いました！');
     }
   });
 

@@ -2656,3 +2656,100 @@ body {
   .waiting-players { grid-template-columns: 1fr; }
   .room-code-value { font-size: 1.5rem; }
 }
+
+/* ============================================ */
+/* Sprint 3: マルチプレイ ランキング           */
+/* ============================================ */
+
+.mp-ranking-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 140, 0, 0.05));
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+}
+
+.ranking-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ranking-table th {
+  padding: 0.5rem 1rem;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.ranking-row {
+  transition: background 0.3s ease;
+}
+
+.ranking-row td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ranking-me {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.ranking-me td {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.ranking-badge {
+  font-size: 1.5rem;
+  text-align: center;
+  width: 50px;
+}
+
+.ranking-name {
+  font-size: 1rem;
+}
+
+.ranking-score {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* 提出状況バー */
+.submission-progress {
+  margin: 1rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #ff8c00);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* 提出状況バー - 結果画面 */
+#mp-submission-bar {
+  margin: 1rem 0;
+}

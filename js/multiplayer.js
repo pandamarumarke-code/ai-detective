@@ -23,7 +23,11 @@ const Multiplayer = {
     connected: false,
     mpMode: false,       // マルチプレイモード中か
     theme: 'classic',
-    difficulty: 'normal'
+    difficulty: 'normal',
+    // Sprint 3: 回答・ランキング
+    submissions: {},     // { [userId]: { nickname, culprit, submitted: true } }
+    rankings: [],        // [{ nickname, score, maxScore, rank, badge }]
+    myScore: null        // 自分のスコア { score, maxScore, result }
   },
 
   // 外部コールバック（app.jsから注入）
@@ -31,6 +35,7 @@ const Multiplayer = {
     onGameStart: null,      // ゲーム開始（シナリオ生成トリガー）
     onScenarioReady: null,  // シナリオ受信完了
     onGenProgress: null,    // 生成進捗
+    onAllSubmitted: null,   // 全員回答完了 → ランキング表示
     showScreen: null,       // 画面遷移
     showToast: null         // トースト通知
   },
@@ -149,11 +154,11 @@ const Multiplayer = {
       },
 
       onPlayerSubmitted: (data) => {
-        this._showNotification(`${data.nickname} が推理を提出しました (${data.submitted}/${data.total})`);
+        this._onPlayerSubmitted(data);
       },
 
       onResultsReady: (data) => {
-        console.log('📊 結果発表:', data);
+        this._onResultsReady(data);
       },
 
       onChat: (data) => {
@@ -313,6 +318,152 @@ const Multiplayer = {
   },
 
   // ================================================
+  // Sprint 3: 回答提出・ランキング
+  // ================================================
+
+  /** 自分の回答を全員にBroadcast */
+  broadcastSubmission(result) {
+    const { realtime } = window.SupabaseClient;
+    const totalPlayers = this.state.players.length;
+
+    // 自分の提出を記録
+    this.state.submissions[this.state.user.id] = {
+      nickname: this.state.nickname,
+      culprit: result.playerAnswers?.culprit || '',
+      score: result.score,
+      maxScore: result.maxScore,
+      submitted: true
+    };
+    this.state.myScore = { score: result.score, maxScore: result.maxScore, result: result.fullResult };
+
+    const submittedCount = Object.keys(this.state.submissions).length;
+
+    // Broadcast
+    realtime.broadcast('player_submitted', {
+      userId: this.state.user.id,
+      nickname: this.state.nickname,
+      culprit: result.playerAnswers?.culprit || '',
+      score: result.score,
+      maxScore: result.maxScore,
+      submitted: submittedCount,
+      total: totalPlayers
+    });
+
+    // 全員提出済みかチェック
+    if (submittedCount >= totalPlayers) {
+      this._calculateRankings();
+    }
+  },
+
+  /** 他プレイヤーの提出を受信 */
+  _onPlayerSubmitted(data) {
+    // 提出記録を更新
+    this.state.submissions[data.userId] = {
+      nickname: data.nickname,
+      culprit: data.culprit,
+      score: data.score,
+      maxScore: data.maxScore,
+      submitted: true
+    };
+
+    const submittedCount = Object.keys(this.state.submissions).length;
+    const totalPlayers = this.state.players.length;
+
+    this._showNotification(`${data.nickname} が推理を提出しました (${submittedCount}/${totalPlayers})`);
+
+    // 提出状況バーを更新
+    this._updateSubmissionBar(submittedCount, totalPlayers);
+
+    // 全員提出済みかチェック
+    if (submittedCount >= totalPlayers) {
+      this._calculateRankings();
+    }
+  },
+
+  /** 提出状況バーの更新 */
+  _updateSubmissionBar(submitted, total) {
+    let bar = document.querySelector('#mp-submission-bar');
+    if (!bar) return;
+    bar.innerHTML = `
+      <div class="submission-progress">
+        <span>提出状況: ${submitted} / ${total}</span>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${(submitted / total) * 100}%"></div>
+        </div>
+      </div>
+    `;
+  },
+
+  /** ランキング計算・表示 */
+  _calculateRankings() {
+    const rankings = Object.entries(this.state.submissions)
+      .map(([userId, sub]) => ({
+        userId,
+        nickname: sub.nickname,
+        score: sub.score || 0,
+        maxScore: sub.maxScore || 100,
+        isMe: userId === this.state.user?.id
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    // 順位付け
+    rankings.forEach((r, i) => {
+      r.rank = i + 1;
+      r.badge = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '🎖️';
+    });
+
+    this.state.rankings = rankings;
+
+    // ホストなら結果をBroadcast
+    if (this.state.isHost) {
+      const { realtime } = window.SupabaseClient;
+      realtime.broadcast('results_ready', { rankings });
+    }
+
+    // コールバックで結果画面へ
+    this._callbacks.onAllSubmitted?.(rankings);
+  },
+
+  /** 結果受信ハンドラ（ゲスト側） */
+  _onResultsReady(data) {
+    if (data.rankings) {
+      this.state.rankings = data.rankings.map(r => ({
+        ...r,
+        isMe: r.userId === this.state.user?.id
+      }));
+    }
+    // 既に自分のスコアが計算済みならランキング表示
+    if (this.state.myScore) {
+      this._callbacks.onAllSubmitted?.(this.state.rankings);
+    }
+  },
+
+  /** マルチプレイランキングHTMLを生成 */
+  renderRankingHTML() {
+    if (!this.state.rankings.length) return '';
+
+    const rows = this.state.rankings.map(r => `
+      <tr class="ranking-row ${r.isMe ? 'ranking-me' : ''}">
+        <td class="ranking-badge">${r.badge}</td>
+        <td class="ranking-name">${this._escapeHtml(r.nickname)} ${r.isMe ? '<span class="player-badge">あなた</span>' : ''}</td>
+        <td class="ranking-score">${r.score} / ${r.maxScore}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <div class="mp-ranking-section">
+        <h3 class="ranking-title">🏆 マルチプレイ ランキング</h3>
+        <table class="ranking-table">
+          <thead>
+            <tr><th></th><th>探偵名</th><th>スコア</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  // ================================================
   // アクション
   // ================================================
 
@@ -349,7 +500,10 @@ const Multiplayer = {
       playerId: null,
       players: [],
       connected: false,
-      mpMode: false
+      mpMode: false,
+      submissions: {},
+      rankings: [],
+      myScore: null
     };
   },
 
