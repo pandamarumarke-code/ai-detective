@@ -401,10 +401,23 @@ function setupEventListeners() {
   });
 
   // ---- 結果画面 ----
-  $('#btn-new-case').addEventListener('click', () => R.showScreen('config'));
+  $('#btn-new-case').addEventListener('click', () => {
+    const isMp = typeof Multiplayer !== 'undefined' && Multiplayer.isActive();
+    if (isMp) {
+      // MPモード: ロビーに戻る
+      Multiplayer.returnToLobby();
+    } else {
+      R.showScreen('config');
+    }
+  });
   $('#btn-back-title').addEventListener('click', () => {
-    R.renderTitleStats();
-    R.showScreen('title');
+    const isMp = typeof Multiplayer !== 'undefined' && Multiplayer.isActive();
+    if (isMp) {
+      Multiplayer.returnToTitle();
+    } else {
+      R.renderTitleStats();
+      R.showScreen('title');
+    }
   });
 
   // ---- シェアボタン（結果画面） ----
@@ -439,13 +452,12 @@ function setupEventListeners() {
       R.renderIntro();
       R.showScreen('game');
     },
-    onAllSubmitted: (rankings) => {
+    onAllSubmitted: async (rankings) => {
       // 全員提出完了 → ランキングを結果画面に注入
       const rankingEl = document.querySelector('#mp-ranking-container');
       if (rankingEl) {
         rankingEl.innerHTML = Multiplayer.renderRankingHTML();
       } else {
-        // コンテナがなければ結果画面に追加
         const resultScreen = document.querySelector('#screen-result');
         if (resultScreen) {
           const div = document.createElement('div');
@@ -454,6 +466,11 @@ function setupEventListeners() {
           resultScreen.insertBefore(div, resultScreen.querySelector('.result-actions'));
         }
       }
+
+      // Sprint 4: 戦績保存 + ルーム終了
+      await Multiplayer.saveGameResults();
+      await Multiplayer.finishGame();
+
       showToast('🏆 全員の推理が揃いました！');
     }
   });
@@ -614,10 +631,12 @@ function setupEventListeners() {
     }
   });
 
-  // 待機室: 退出
+  // 待機室: 退出（確認ダイアログ付き）
   $('#btn-mp-leave').addEventListener('click', async () => {
+    if (!confirm('ルームから退出しますか？')) return;
     await Multiplayer.leaveRoom();
-    R.showScreen('lobby');
+    R.renderTitleStats();
+    R.showScreen('title');
   });
 
   /** トースト通知 */

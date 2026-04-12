@@ -5,7 +5,7 @@
 // @depends   supabase.js, store.js, renderer.js
 // @exports   Multiplayer (global)
 // @consumers app.js (イベントリスナーから呼び出し)
-// @updated   2026-04-12 Sprint 2
+// @updated   2026-04-13 Sprint 4
 // ================================================
 
 const AVATAR_OPTIONS = ['🕵️', '🔍', '🧐', '👀', '🎭', '🦊', '🐻', '🐼', '🦉', '🐱', '🐶', '🐰'];
@@ -464,6 +464,54 @@ const Multiplayer = {
   },
 
   // ================================================
+  // Sprint 4: 戦績保存・ルーム終了
+  // ================================================
+
+  /** ランキング確定後、全プレイヤーのスコアをDB保存 */
+  async saveGameResults() {
+    if (!this.state.rankings.length) return;
+
+    const { rooms } = window.SupabaseClient;
+    try {
+      for (const r of this.state.rankings) {
+        if (r.userId === this.state.user?.id) {
+          // 自分のスコアを保存
+          await rooms.saveScore(this.state.playerId, r.score, r.rank);
+        }
+      }
+      console.log('✅ 戦績を保存しました');
+    } catch (e) {
+      console.warn('戦績保存エラー:', e.message);
+    }
+  },
+
+  /** ゲーム終了処理（ホストのみ実行） */
+  async finishGame() {
+    if (!this.state.isHost || !this.state.roomId) return;
+
+    const { rooms } = window.SupabaseClient;
+    try {
+      await rooms.updateStatus(this.state.roomId, 'finished');
+      console.log('✅ ルームを終了しました');
+    } catch (e) {
+      console.warn('ルーム終了エラー:', e.message);
+    }
+  },
+
+  /** ロビーに戻る（ルーム退出してロビー画面へ） */
+  async returnToLobby() {
+    await this.leaveRoom();
+    this._callbacks.showScreen?.('lobby');
+    this._callbacks.showToast?.('🏠 ロビーに戻りました');
+  },
+
+  /** 完全にマルチプレイを終了してタイトル画面へ */
+  async returnToTitle() {
+    await this.leaveRoom();
+    this._callbacks.showScreen?.('title');
+  },
+
+  // ================================================
   // アクション
   // ================================================
 
@@ -488,10 +536,19 @@ const Multiplayer = {
 
   async leaveRoom() {
     const { rooms, realtime } = window.SupabaseClient;
-    if (this.state.roomId && this.state.user) {
-      await rooms.leave(this.state.roomId, this.state.user.id);
+    try {
+      if (this.state.roomId && this.state.user) {
+        await rooms.leave(this.state.roomId, this.state.user.id);
+      }
+      realtime.leaveRoom();
+    } catch (e) {
+      console.warn('ルーム退出エラー:', e.message);
     }
-    realtime.leaveRoom();
+    this._resetState();
+  },
+
+  /** ステートリセット（内部用） */
+  _resetState() {
     this.state = {
       ...this.state,
       roomId: null,
