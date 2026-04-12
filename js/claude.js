@@ -71,7 +71,7 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   if (schema) {
     body.output_format = {
       type: 'json_schema',
-      json_schema: schema
+      schema: schema
     };
   }
 
