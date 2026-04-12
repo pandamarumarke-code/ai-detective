@@ -270,16 +270,26 @@ export const VALIDATION_THRESHOLDS = {
  * @param {string} difficultyId
  * @returns {string}
  */
-export function buildScenarioSystemPrompt(themeId, difficultyId) {
+export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = []) {
   const theme = THEMES[themeId];
   const diff = DIFFICULTIES[difficultyId];
   if (!theme || !diff) throw new Error(`Invalid theme(${themeId}) or difficulty(${difficultyId})`);
 
   const totalCards = diff.cardsPerPhase.reduce((a, b) => a + b, 0);
+  // ランダムシードでバリエーションを強制
+  const seed = `SEED-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // 過去人名の禁止リスト
+  const banList = usedNames.length > 0
+    ? `\n## 使用禁止名\n以下の名前は過去のゲームで使用済みです。絶対に使用しないでください： ${usedNames.join('、')}\n`
+    : '';
 
   return `あなたは推理ゲームのシナリオライターです。
 以下の制約に従い、ミステリーシナリオを1つ作成してください。
 
+## ランダムシード: ${seed}
+このシードに基づいて、完全に新しいオリジナルの物語を作ってください。
+過去のシナリオの再利用やテンプレート的なストーリーは禁止です。
+${banList}
 ## テーマ設定
 - ジャンル: ${theme.name}（${theme.description}）
 - 舞台候補: ${theme.locations.join('、')}
@@ -295,6 +305,29 @@ export function buildScenarioSystemPrompt(themeId, difficultyId) {
 - レッドヘリング（偽の手がかり）: 全体の約${Math.round(diff.redHerringRatio * 100)}%
 - ヒントレベル: ${diff.hintLevel}
 
+## 🚨 絶対従守: フェアプレイ原則（最重要）
+この原則に違反したシナリオは不合格です。必ず守ってください。
+
+1. **犯人特定に必要な情報は、必ず手がかりカードのいずれかに含まれること**
+   - 犯人のアリバイの破綻basedはカードから推論可能であること
+   - 犯人の動機を示唆する情報がカードに含まれること
+   - 犯行の手口を推測できる情報がカードに含まれること
+2. **「犯人特定の決定打となるカード」を最低1枚、importance=criticalで含める**
+3. **critical以外のカードを選んでも、消去法で容疑者を絞れるようにする**
+4. **「カードに書かれていない情報」が答えに必要になってはいけない**
+5. 動機と手口についても、カード情報から推論可能であること
+
+## 🎮 調査アクション設計（カードの「action_label」）
+**各カードには、探偵が実行する具体的な調査行動名を付けてください。**
+プレイヤーはこのaction_labelを見て「何を調べるか」を選びます。
+
+良い例:
+- 「遺体を検分する」「凶器を鑑識に出す」「目撃者に話を聞く」
+- 「書斎を捜索する」「防犯カメラを確認する」「Aさんにアリバイを確認する」
+
+悪い例（抽象的すぎる）:
+- 「手がかりA」「証拠1」「物証カード」
+
 ## 必須条件
 1. 手がかりカードだけで論理的に犯人を特定できること（フェアプレイ原則）
 2. 全容疑者にもっともらしい動機があること
@@ -307,7 +340,14 @@ export function buildScenarioSystemPrompt(themeId, difficultyId) {
 ## 回答設問（3問・合計7点）
 1. 犯人は誰か？（容疑者名から選択）— 3点
 2. 犯行の動機は？（記述）— 2点
-3. 犯行の手口は？（記述）— 2点`;
+3. 犯行の手口は？（記述）— 2点
+
+## 重要: 解答可能性の自己検証
+シナリオ生成後、以下を自己検証してください：
+- solution.culpritの名前が、いずれかのカード内容に登場するか？
+- solution.motive_detailのキーワードが、いずれかのカードから推測可能か？
+- solution.method_detailのキーワードが、いずれかのカードから推測可能か？
+もしいずれかが「NO」なら、該当情報をカードに追加してから出力してください。`;
 }
 
 /**
@@ -489,12 +529,13 @@ export const SCENARIO_SCHEMA = {
               type: 'array',
               items: {
                 type: 'object',
-                required: ['id', 'type', 'title', 'content', 'importance'],
+                required: ['id', 'type', 'title', 'action_label', 'content', 'importance'],
                 additionalProperties: false,
                 properties: {
                   id: { type: 'string' },
                   type: { type: 'string', enum: ['testimony', 'evidence', 'circumstance'] },
                   title: { type: 'string' },
+                  action_label: { type: 'string', description: '調査アクション名（例: 遺体を検分する、目撃者に話を聞く）' },
                   content: { type: 'string' },
                   importance: { type: 'string', enum: ['critical', 'high', 'medium', 'low', 'red_herring'] }
                 }

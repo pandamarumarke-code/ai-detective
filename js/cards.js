@@ -38,11 +38,15 @@ export function createCardElement(card, index, onToggle) {
   // 画像表示の条件分岐
   const imageHtml = getCardImageHtml(card.id);
 
+  // 調査アクション名（Sprint A: 能動的な調査体験）
+  const actionLabel = card.action_label || card.title;
+
   el.innerHTML = `
     <div class="clue-card-inner">
       <div class="clue-card-front">
-        <span class="card-mystery-icon">❓</span>
-        <span class="card-label">CLUE ${String(index + 1).padStart(2, '0')}</span>
+        <span class="card-action-icon">${card.type === 'testimony' ? '💬' : card.type === 'evidence' ? '🔍' : '📋'}</span>
+        <span class="card-action-label">${escapeHTML(actionLabel)}</span>
+        <span class="card-type-badge ${card.type}">${typeLabel}</span>
       </div>
       <div class="clue-card-back">
         ${imageHtml}

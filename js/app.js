@@ -56,15 +56,21 @@ async function startGeneration() {
   store.resetGame();
 
   try {
+    // 過去使用人名を取得（重複防止）
+    const usedNames = getUsedNames();
     const scenario = await generateScenario({
       apiKey: isFreeMode ? 'FREE' : apiKey,
       modelId,
       theme,
       difficulty,
       advisorEnabled: isFreeMode ? false : store.state.advisorEnabled,
+      usedNames,
       isFreeMode,
       onProgress: (step, status, detail) => R.updateGenStep(step, status, detail)
     });
+
+    // 人名を保存（次回以降の重複防止）
+    saveUsedNames(scenario);
 
     store.update({ scenario });
 
@@ -130,6 +136,27 @@ async function startGeneration() {
   }
 }
 
+// 過去使用人名の管理（最大3ゲーム分保持）
+function getUsedNames() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('detective_used_names') || '[]');
+    return stored.flat();
+  } catch { return []; }
+}
+function saveUsedNames(scenario) {
+  try {
+    const names = [
+      ...(scenario.suspects || []).map(s => s.name),
+      scenario.victim?.name
+    ].filter(Boolean);
+    const stored = JSON.parse(localStorage.getItem('detective_used_names') || '[]');
+    stored.push(names);
+    // 最新3ゲーム分のみ保持
+    while (stored.length > 3) stored.shift();
+    localStorage.setItem('detective_used_names', JSON.stringify(stored));
+  } catch { /* サイレント失敗 */ }
+}
+
 /** 共有シナリオでゲームを開始（APIキー不要） */
 function startSharedGame() {
   const { scenario } = store.state;
@@ -163,11 +190,13 @@ function startInvestigation(phaseIndex) {
   });
 
   const hints = s.hints || [];
-  R.renderHintButton(hints, store.state.hintsUsed, (hint) => {
+  // ヒントコールバック（再帰的に次のヒントボタンを正しく描画）
+  function onHintClick(hint) {
     store.useHint(hint.penalty);
     R.showHintText(hint, store.state.hintsUsed);
-    R.renderHintButton(hints, store.state.hintsUsed, () => {});
-  });
+    R.renderHintButton(hints, store.state.hintsUsed, onHintClick);
+  }
+  R.renderHintButton(hints, store.state.hintsUsed, onHintClick);
 
   // バックグラウンドで次フェイズのカード画像を先行生成
   const { geminiApiKey, imageEnabled, imageModelId, theme } = store.state;

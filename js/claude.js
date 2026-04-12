@@ -170,14 +170,14 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
  *   step: 1-6, status: 'active'|'done'|'error'|'retry'
  * @returns {Promise<Object>} 検証済みシナリオ
  */
-export async function generateScenario({ apiKey, modelId, theme, difficulty, advisorEnabled = false, onProgress }) {
+export async function generateScenario({ apiKey, modelId, theme, difficulty, advisorEnabled = false, usedNames = [], onProgress }) {
   const { maxRetries } = VALIDATION_THRESHOLDS;
   let attempt = 0;
   let lastError = null;
 
   while (attempt <= maxRetries) {
     try {
-      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, onProgress, attempt });
+      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, onProgress, attempt });
       return scenario;
     } catch (e) {
       lastError = e;
@@ -196,7 +196,7 @@ export async function generateScenario({ apiKey, modelId, theme, difficulty, adv
 /**
  * パイプライン1回分の実行
  */
-async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, onProgress, attempt }) {
+async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, onProgress, attempt }) {
   // Advisor使用時のプロンプト追加文
   const advisorHint = advisorEnabled
     ? '\n\n【重要】またadvisorに相談して、戦略的な計画を立ててから実行してください。'
@@ -209,7 +209,7 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     scenario = await callClaude({
       apiKey,
       modelId,
-      system: buildScenarioSystemPrompt(theme, difficulty),
+      system: buildScenarioSystemPrompt(theme, difficulty, usedNames),
       userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : ''),
       schema: SCENARIO_SCHEMA,
       useAdvisor: advisorEnabled,
@@ -437,6 +437,26 @@ function validateStructure(scenario, difficultyId) {
   // SV-9: ヒント存在
   if (!scenario.hints || scenario.hints.length < VALIDATION_THRESHOLDS.minHints) {
     errors.push(`SV-9: ヒント${scenario.hints?.length || 0}個（要: ${VALIDATION_THRESHOLDS.minHints}個以上）`);
+  }
+
+  // SV-10: フェアプレイ検証（解答に必要な情報がカードに含まれるか）
+  if (scenario.solution && scenario.investigation_phases) {
+    const allCardText = scenario.investigation_phases
+      .flatMap(p => (p.cards || []).map(c => `${c.title} ${c.content}`))
+      .join(' ');
+    
+    // 犯人名がカードで言及されているか
+    if (scenario.solution.culprit && !allCardText.includes(scenario.solution.culprit)) {
+      errors.push(`SV-10: 犯人「${scenario.solution.culprit}」がカード内容に登場しない（フェアプレイ違反）`);
+    }
+    
+    // criticalカードが最低1枚あるか
+    const criticalCards = scenario.investigation_phases
+      .flatMap(p => (p.cards || []))
+      .filter(c => c.importance === 'critical');
+    if (criticalCards.length === 0) {
+      errors.push('SV-10: importance=criticalのカードが1枚もない（犯人特定の決定打が必要）');
+    }
   }
 
   return { valid: errors.length === 0, errors };
