@@ -88,7 +88,8 @@ function createInitialState() {
 
     // UI状態
     currentScreen: 'title',
-    playerNotes: ''
+    playerNotes: '',
+    deductionMemo: ''  // 推理メモ（プレイヤーの推理過程を記録）
   };
 }
 

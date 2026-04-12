@@ -250,6 +250,15 @@
           <button id="btn-next-phase" class="btn btn-primary btn-glow" style="display:none;">
             次の調査へ →
           </button>
+
+          <!-- 推理メモ（折りたたみ式） -->
+          <details class="deduction-memo" id="deduction-memo-section">
+            <summary class="deduction-memo-toggle">🧠 推理メモ <span class="memo-hint">（調査中の気づきを記録）</span></summary>
+            <div class="deduction-memo-body">
+              <textarea id="deduction-memo" placeholder="例：田中氏のアリバイが怪しい。カード3の証言と矛盾している..." rows="4"></textarea>
+              <p class="memo-note">📌 メモは最終推理画面でも参照できます</p>
+            </div>
+          </details>
         </div>
 
         <!-- 回答パネル -->
@@ -273,6 +282,12 @@
               <label>🔪 犯行の手口は？</label>
               <textarea id="answer-method" placeholder="犯行方法を記述してください..." rows="3"></textarea>
             </div>
+          </div>
+
+          <!-- 推理メモ参照 -->
+          <div class="deduction-memo-ref" id="deduction-memo-ref" style="display:none;">
+            <h4>🧠 あなたの推理メモ</h4>
+            <div class="memo-ref-content" id="deduction-memo-ref-content"></div>
           </div>
 
           <button id="btn-submit-answer" class="btn btn-primary btn-glow btn-lg">

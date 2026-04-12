@@ -872,6 +872,17 @@ body {
   justify-content: flex-start;
 }
 
+/* フォーカスエリアラベル（カード表面上部） */
+.card-focus-label {
+  font-size: 0.65rem;
+  color: var(--gold-500);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 100px;
+  padding: 2px 8px;
+  letter-spacing: 1px;
+}
+
 .card-type-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -2761,4 +2772,88 @@ body {
 /* 提出状況バー - 結果画面 */
 #mp-submission-bar {
   margin: 1rem 0;
+}
+
+/* ================================================
+   推理メモ（調査パネル内の折りたたみ式メモ）
+   ================================================ */
+.deduction-memo {
+  margin-top: var(--space-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.deduction-memo-toggle {
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  transition: background 0.2s;
+}
+
+.deduction-memo-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.deduction-memo-toggle .memo-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.deduction-memo-body {
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.deduction-memo-body textarea {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.deduction-memo-body textarea:focus {
+  border-color: var(--gold-500);
+  outline: none;
+}
+
+.memo-note {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* 回答画面の推理メモ参照 */
+.deduction-memo-ref {
+  margin: var(--space-lg) 0;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(251, 191, 36, 0.05);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.deduction-memo-ref h4 {
+  margin: 0 0 var(--space-sm);
+  font-size: 0.85rem;
+  color: var(--gold-500);
+}
+
+.memo-ref-content {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
 }

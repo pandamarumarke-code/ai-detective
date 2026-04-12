@@ -2,9 +2,9 @@
 // @ai-spec
 // @module    constants
 // @purpose   不変データの単一定義場所（SSOT）。テーマ/難易度/モデル/プロンプト/バリデーション定数
-// @ssot      THEMES, DIFFICULTIES, MODELS, ADVISOR_CONFIG, GEMINI_MODELS, IMAGE_CONFIG, SCENARIO_SCHEMA
+// @ssot      THEMES, DIFFICULTIES, MODELS, ADVISOR_CONFIG, GEMINI_MODELS, IMAGE_CONFIG, SCENARIO_SCHEMA, SCENARIO_DNA_OPTIONS
 // @depends   なし
-// @exports   THEMES, DIFFICULTIES, MODELS, ADVISOR_CONFIG, GEMINI_MODELS, IMAGE_CONFIG, IMAGE_PROMPTS, CARD_TYPE_LABELS, SCENARIO_SCHEMA, DEEP_VALIDATION_SCHEMA, JAPANESE_QUALITY_SCHEMA, SCORING_SCHEMA, VALIDATION_THRESHOLDS, buildScenarioSystemPrompt, buildDeepValidationPrompt, buildJapaneseQualityPrompt, buildScoringPrompt, getRank
+// @exports   THEMES, DIFFICULTIES, MODELS, ADVISOR_CONFIG, GEMINI_MODELS, IMAGE_CONFIG, IMAGE_PROMPTS, CARD_TYPE_LABELS, SCENARIO_SCHEMA, DEEP_VALIDATION_SCHEMA, JAPANESE_QUALITY_SCHEMA, SCORING_SCHEMA, SOLVABILITY_CHECK_SCHEMA, VALIDATION_THRESHOLDS, SCENARIO_DNA_OPTIONS, buildScenarioSystemPrompt, buildDeepValidationPrompt, buildJapaneseQualityPrompt, buildScoringPrompt, buildSolvabilityCheckPrompt, getRank
 // @consumers claude.js, gemini.js, app.js, renderer.js, cards.js
 // @constraints
 //   - このファイル内の定数を他ファイルで再定義しない（SSOT原則）
@@ -248,6 +248,15 @@ export const CARD_TYPE_LABELS = {
 };
 
 // ================================================
+// シナリオDNA（構造的バリエーション強制）
+// ================================================
+export const SCENARIO_DNA_OPTIONS = {
+  motive_type: ['怨恨', '金銭トラブル', '隠蔽工作', '嫉妬', '事故偽装', '復讐', '権力闘争', '秘密の保護'],
+  trick_type: ['アリバイ工作', '密室トリック', '毒殺', 'すり替え', '時間差トリック', '偽装工作', '共犯者利用', '心理的誘導'],
+  twist_type: ['意外な犯人', '動機の逆転', '被害者の秘密', '証言の嘘', '時系列の罠', '見立て殺人'],
+};
+
+// ================================================
 // 検証パイプライン閾値
 // ================================================
 export const VALIDATION_THRESHOLDS = {
@@ -270,17 +279,20 @@ export const VALIDATION_THRESHOLDS = {
  * @param {string} difficultyId
  * @returns {string}
  */
-export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = []) {
+export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = [], dna = null) {
   const theme = THEMES[themeId];
   const diff = DIFFICULTIES[difficultyId];
   if (!theme || !diff) throw new Error(`Invalid theme(${themeId}) or difficulty(${difficultyId})`);
 
   const totalCards = diff.cardsPerPhase.reduce((a, b) => a + b, 0);
-  // ランダムシードでバリエーションを強制
   const seed = `SEED-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  // 過去人名の禁止リスト
   const banList = usedNames.length > 0
     ? `\n## 使用禁止名\n以下の名前は過去のゲームで使用済みです。絶対に使用しないでください： ${usedNames.join('、')}\n`
+    : '';
+
+  // シナリオDNA（構造的バリエーション）
+  const dnaSection = dna
+    ? `\n## 🧬 シナリオDNA（必ずこの構造に従うこと）\n- 動機タイプ: **${dna.motive_type}**（この種類の動機を中心にシナリオを構築）\n- トリックタイプ: **${dna.trick_type}**（この手法を犯行の核にすること）\n- ツイストタイプ: **${dna.twist_type}**（この展開を物語に組み込むこと）\n`
     : '';
 
   return `あなたは推理ゲームのシナリオライターです。
@@ -289,7 +301,7 @@ export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = [])
 ## ランダムシード: ${seed}
 このシードに基づいて、完全に新しいオリジナルの物語を作ってください。
 過去のシナリオの再利用やテンプレート的なストーリーは禁止です。
-${banList}
+${banList}${dnaSection}
 ## テーマ設定
 - ジャンル: ${theme.name}（${theme.description}）
 - 舞台候補: ${theme.locations.join('、')}
@@ -305,11 +317,11 @@ ${banList}
 - レッドヘリング（偽の手がかり）: 全体の約${Math.round(diff.redHerringRatio * 100)}%
 - ヒントレベル: ${diff.hintLevel}
 
-## 🚨 絶対従守: フェアプレイ原則（最重要）
+## 🚨 絶対遵守: フェアプレイ原則（最重要）
 この原則に違反したシナリオは不合格です。必ず守ってください。
 
 1. **犯人特定に必要な情報は、必ず手がかりカードのいずれかに含まれること**
-   - 犯人のアリバイの破綻basedはカードから推論可能であること
+   - 犯人のアリバイ崩壊の根拠がカードから推論可能であること
    - 犯人の動機を示唆する情報がカードに含まれること
    - 犯行の手口を推測できる情報がカードに含まれること
 2. **「犯人特定の決定打となるカード」を最低1枚、importance=criticalで含める**
@@ -317,16 +329,20 @@ ${banList}
 4. **「カードに書かれていない情報」が答えに必要になってはいけない**
 5. 動機と手口についても、カード情報から推論可能であること
 
-## 🎮 調査アクション設計（カードの「action_label」）
-**各カードには、探偵が実行する具体的な調査行動名を付けてください。**
-プレイヤーはこのaction_labelを見て「何を調べるか」を選びます。
+## 🎮 調査アクション設計（カードの「action_label」と「focus_area」）
+**各カードには2つの属性を付けてください：**
 
-良い例:
-- 「遺体を検分する」「凶器を鑑識に出す」「目撃者に話を聞く」
-- 「書斎を捜索する」「防犯カメラを確認する」「Aさんにアリバイを確認する」
+### action_label（調査行動名）
+探偵が実行する具体的な調査行動名。プレイヤーはこれを見て「何を調べるか」を決めます。
+良い例: 「遺体を検分する」「凶器を鑑識に出す」「目撃者に話を聞く」
+悪い例: 「手がかりA」「証拠1」
 
-悪い例（抽象的すぎる）:
-- 「手がかりA」「証拠1」「物証カード」
+### focus_area / focus_label（調査フォーカスエリア）
+カードが属する調査エリア。同じフェイズ内で2〜3種類のエリアに分類してください。
+- focus_area: 英語の識別子（例: "location_study", "person_tanaka", "forensics"）
+- focus_label: 表示用の日本語ラベル+アイコン（例: "📖 書斎", "👤 田中氏", "🔬 鑑識"）
+
+プレイヤーはフォーカスエリアを見て「書斎を調べるか、田中に聞くか」を選ぶ体験をします。
 
 ## 必須条件
 1. 手がかりカードだけで論理的に犯人を特定できること（フェアプレイ原則）
@@ -529,13 +545,15 @@ export const SCENARIO_SCHEMA = {
               type: 'array',
               items: {
                 type: 'object',
-                required: ['id', 'type', 'title', 'action_label', 'content', 'importance'],
+                required: ['id', 'type', 'title', 'action_label', 'focus_area', 'focus_label', 'content', 'importance'],
                 additionalProperties: false,
                 properties: {
                   id: { type: 'string' },
                   type: { type: 'string', enum: ['testimony', 'evidence', 'circumstance'] },
                   title: { type: 'string' },
-                  action_label: { type: 'string', description: '調査アクション名（例: 遺体を検分する、目撃者に話を聞く）' },
+                  action_label: { type: 'string', description: '調査アクション名（例: 遺体を検分する）' },
+                  focus_area: { type: 'string', description: '調査エリアID（例: location_study, person_tanaka）' },
+                  focus_label: { type: 'string', description: '調査エリア表示名（例: 📖 書斎, 👤 田中氏）' },
                   content: { type: 'string' },
                   importance: { type: 'string', enum: ['critical', 'high', 'medium', 'low', 'red_herring'] }
                 }
@@ -681,3 +699,54 @@ export const SCORING_SCHEMA = {
     }
   }
 };
+
+// ================================================
+// Pass 5: 解答チェーン検証スキーマ
+// ================================================
+export const SOLVABILITY_CHECK_SCHEMA = {
+  name: 'solvability_check',
+  strict: true,
+  schema: {
+    type: 'object',
+    required: ['is_solvable', 'culprit_chain', 'motive_chain', 'method_chain', 'confidence', 'missing_info'],
+    additionalProperties: false,
+    properties: {
+      is_solvable: { type: 'boolean', description: 'カード情報だけで解答可能か' },
+      culprit_chain: { type: 'string', description: '犯人特定の推論チェーン（カードX→推論→結論）' },
+      motive_chain: { type: 'string', description: '動機推測の推論チェーン' },
+      method_chain: { type: 'string', description: '手口推測の推論チェーン' },
+      confidence: { type: 'integer', description: '解答確信度 0-100' },
+      missing_info: { type: 'array', items: { type: 'string' }, description: 'カードに不足している情報' }
+    }
+  }
+};
+
+/**
+ * Pass 5: 解答チェーン検証プロンプト
+ * AIが「探偵役」としてカード情報のみで推理を試みる
+ */
+export function buildSolvabilityCheckPrompt(scenario) {
+  const cardsOnly = (scenario.investigation_phases || [])
+    .flatMap(p => (p.cards || []).map(c => `[カード: ${c.title}] ${c.content}`));
+  const suspectNames = (scenario.suspects || []).map(s => s.name).join('、');
+
+  return `あなたは探偵です。以下の手がかりカードの情報だけを使って、事件を推理してください。
+
+## 容疑者
+${suspectNames}
+
+## 導入文
+${scenario.introduction}
+
+## 手がかりカード（これだけが使える情報）
+${cardsOnly.join('\n')}
+
+## 調査指示
+上記のカード情報だけを使って、以下の3つを推理してください：
+1. 犯人は誰か？（具体的な推論チェーンを示す）
+2. 動機は何か？（カードからの推測）
+3. 手口は何か？（カードからの推測）
+
+重要: カードに書かれていない情報で推理しないでください。
+推理できない場合は is_solvable: false とし、missing_infoに不足情報を記載してください。`;
+}

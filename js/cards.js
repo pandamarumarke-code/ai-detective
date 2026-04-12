@@ -40,10 +40,13 @@ export function createCardElement(card, index, onToggle) {
 
   // 調査アクション名（Sprint A: 能動的な調査体験）
   const actionLabel = card.action_label || card.title;
+  // フォーカスエリア（Sprint 2: 調査場所/対象の表示）
+  const focusLabel = card.focus_label || '';
 
   el.innerHTML = `
     <div class="clue-card-inner">
       <div class="clue-card-front">
+        ${focusLabel ? `<span class="card-focus-label">${escapeHTML(focusLabel)}</span>` : ''}
         <span class="card-action-icon">${card.type === 'testimony' ? '💬' : card.type === 'evidence' ? '🔍' : '📋'}</span>
         <span class="card-action-label">${escapeHTML(actionLabel)}</span>
         <span class="card-type-badge ${card.type}">${typeLabel}</span>

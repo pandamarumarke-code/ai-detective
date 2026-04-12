@@ -19,7 +19,7 @@
 // ================================================
 
 import store from './store.js';
-import { DIFFICULTIES } from './constants.js';
+import { DIFFICULTIES, SCENARIO_DNA_OPTIONS } from './constants.js';
 import { generateScenario, evaluateAnswer } from './claude.js';
 import { generateSceneImages, generateCardImages } from './gemini.js';
 import { animateCardReveal } from './cards.js';
@@ -58,6 +58,9 @@ async function startGeneration() {
   try {
     // 過去使用人名を取得（重複防止）
     const usedNames = getUsedNames();
+    // シナリオDNAを生成（構造的バリエーション強制）
+    const dna = generateScenarioDNA();
+    console.log('🧬 シナリオDNA:', dna);
     const scenario = await generateScenario({
       apiKey: isFreeMode ? 'FREE' : apiKey,
       modelId,
@@ -65,12 +68,15 @@ async function startGeneration() {
       difficulty,
       advisorEnabled: isFreeMode ? false : store.state.advisorEnabled,
       usedNames,
+      dna,
       isFreeMode,
       onProgress: (step, status, detail) => R.updateGenStep(step, status, detail)
     });
 
     // 人名を保存（次回以降の重複防止）
     saveUsedNames(scenario);
+    // DNAを保存（構造的バリエーション保証）
+    saveUsedDNA(dna);
 
     store.update({ scenario });
 
@@ -155,6 +161,41 @@ function saveUsedNames(scenario) {
     while (stored.length > 3) stored.shift();
     localStorage.setItem('detective_used_names', JSON.stringify(stored));
   } catch { /* サイレント失敗 */ }
+}
+
+// シナリオDNA生成（過去3ゲームと構造重複しない）
+function generateScenarioDNA() {
+  const pastDnas = getUsedDNAs();
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  let dna, attempts = 0;
+  do {
+    dna = {
+      motive_type: pick(SCENARIO_DNA_OPTIONS.motive_type),
+      trick_type: pick(SCENARIO_DNA_OPTIONS.trick_type),
+      twist_type: pick(SCENARIO_DNA_OPTIONS.twist_type)
+    };
+    attempts++;
+    // 過去3ゲームと同じ組み合わせかチェック
+    const isDuplicate = pastDnas.some(p =>
+      p.motive_type === dna.motive_type &&
+      p.trick_type === dna.trick_type
+    );
+    if (!isDuplicate || attempts > 10) break;
+  } while (true);
+  return dna;
+}
+function getUsedDNAs() {
+  try {
+    return JSON.parse(localStorage.getItem('detective_used_dnas') || '[]');
+  } catch { return []; }
+}
+function saveUsedDNA(dna) {
+  try {
+    const stored = getUsedDNAs();
+    stored.push(dna);
+    while (stored.length > 3) stored.shift();
+    localStorage.setItem('detective_used_dnas', JSON.stringify(stored));
+  } catch { /* サイレント */ }
 }
 
 /** 共有シナリオでゲームを開始（APIキー不要） */
@@ -780,10 +821,18 @@ function init() {
     if (advLabel) advLabel.textContent = advisorEnabled ? '有効' : '無効';
   }
 
+  // 推理メモの自動保存
+  const memoEl = $('#deduction-memo');
+  if (memoEl) {
+    memoEl.addEventListener('input', () => {
+      store.update({ deductionMemo: memoEl.value });
+    });
+  }
+
   // URLハッシュから共有シナリオを検出
   const isShared = checkForSharedScenario();
   if (!isShared) {
-    console.log('🔍 AI探偵団 — 初期化完了（Claude + NanoBanana + Advisor）');
+    console.log('🔍 AI探偵団 v5.0 — 初期化完了（DNA + 解答チェーン + 推理メモ）');
   } else {
     console.log('🔗 AI探偵団 — 共有シナリオを検出');
   }

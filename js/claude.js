@@ -25,9 +25,9 @@
 import {
   MODELS, DIFFICULTIES, ADVISOR_CONFIG,
   SCENARIO_SCHEMA, DEEP_VALIDATION_SCHEMA, JAPANESE_QUALITY_SCHEMA, SCORING_SCHEMA,
-  VALIDATION_THRESHOLDS,
+  SOLVABILITY_CHECK_SCHEMA, VALIDATION_THRESHOLDS, SCENARIO_DNA_OPTIONS,
   buildScenarioSystemPrompt, buildDeepValidationPrompt,
-  buildJapaneseQualityPrompt, buildScoringPrompt
+  buildJapaneseQualityPrompt, buildScoringPrompt, buildSolvabilityCheckPrompt
 } from './constants.js';
 
 // CORSプロキシ: Vercel Serverless Function（本番）/ ローカルプロキシ（開発）
@@ -170,14 +170,14 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
  *   step: 1-6, status: 'active'|'done'|'error'|'retry'
  * @returns {Promise<Object>} 検証済みシナリオ
  */
-export async function generateScenario({ apiKey, modelId, theme, difficulty, advisorEnabled = false, usedNames = [], onProgress }) {
+export async function generateScenario({ apiKey, modelId, theme, difficulty, advisorEnabled = false, usedNames = [], dna = null, onProgress }) {
   const { maxRetries } = VALIDATION_THRESHOLDS;
   let attempt = 0;
   let lastError = null;
 
   while (attempt <= maxRetries) {
     try {
-      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, onProgress, attempt });
+      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt });
       return scenario;
     } catch (e) {
       lastError = e;
@@ -196,7 +196,7 @@ export async function generateScenario({ apiKey, modelId, theme, difficulty, adv
 /**
  * パイプライン1回分の実行
  */
-async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, onProgress, attempt }) {
+async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt }) {
   // Advisor使用時のプロンプト追加文
   const advisorHint = advisorEnabled
     ? '\n\n【重要】またadvisorに相談して、戦略的な計画を立ててから実行してください。'
@@ -209,7 +209,7 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     scenario = await callClaude({
       apiKey,
       modelId,
-      system: buildScenarioSystemPrompt(theme, difficulty, usedNames),
+      system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
       userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : ''),
       schema: SCENARIO_SCHEMA,
       useAdvisor: advisorEnabled,
@@ -341,11 +341,38 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     onProgress(5, 'done');
   }
 
+  // ---- Step 5.5: 解答チェーン検証 (Pass 5) ----
+  // AIが「探偵役」としてカード情報だけで推理を試み、解けるか検証
+  try {
+    const solvCheck = await callClaude({
+      apiKey,
+      modelId,
+      system: 'あなたは探偵です。手がかりカードの情報だけで事件を推理してください。カード外の情報は使えません。',
+      userMessage: buildSolvabilityCheckPrompt(scenario),
+      schema: SOLVABILITY_CHECK_SCHEMA,
+      temperature: 0.1,
+      maxTokens: 2048
+    });
+    scenario._solvabilityCheck = solvCheck;
+
+    if (!solvCheck.is_solvable || solvCheck.confidence < 50) {
+      const err = new Error(`解答チェーン検証失敗: カード情報だけでは推理不可能 (確信度${solvCheck.confidence}%)`);
+      err._retryable = true;
+      throw err;
+    }
+    console.log(`✅ 解答チェーン検証 OK (確信度${solvCheck.confidence}%)`);
+  } catch (e) {
+    if (e._retryable) throw e;
+    console.warn('解答チェーン検証スキップ:', e.message);
+  }
+
   // ---- Step 6: 完了 ----
   onProgress(6, 'done');
 
   // 品質スコアを集約
   scenario._qualityScore = computeOverallQuality(logicResult, jpResult);
+  // DNA情報を保存
+  if (dna) scenario._dna = dna;
 
   return scenario;
 }

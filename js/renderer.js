@@ -332,6 +332,18 @@ export function renderAnswerPhase() {
 
   $('#answer-motive').value = '';
   $('#answer-method').value = '';
+
+  // 推理メモを回答画面に表示
+  const memoText = store.state.deductionMemo || '';
+  const memoRef = $('#deduction-memo-ref');
+  const memoRefContent = $('#deduction-memo-ref-content');
+  if (memoText.trim()) {
+    memoRefContent.textContent = memoText;
+    memoRef.style.display = 'block';
+  } else {
+    memoRef.style.display = 'none';
+  }
+
   showGamePanel('answer');
 }
 
