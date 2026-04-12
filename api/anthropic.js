@@ -5,7 +5,8 @@
 // @depends   なし（Node.js built-in のみ）
 // @consumers js/claude.js (ブラウザから /api/anthropic にPOST)
 // @constraints
-//   - APIキーはリクエストヘッダーから受け取り、そのまま転送するだけ
+//   - BYOKモード: クライアントのAPIキーをそのまま転送
+//   - 無料モード: x-api-keyなし → 環境変数 ANTHROPIC_API_KEY を使用
 //   - レスポンスボディはストリーミングせず、全体を受信してから返す
 // @dataflow  ブラウザ → /api/anthropic → https://api.anthropic.com/v1/messages → ブラウザ
 // @updated   2026-04-12
@@ -15,7 +16,7 @@ export default async function handler(req, res) {
   // CORS ヘッダー
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key, anthropic-version, anthropic-beta');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode');
 
   // プリフライト
   if (req.method === 'OPTIONS') {
@@ -27,9 +28,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey) {
-      return res.status(400).json({ error: 'x-api-key header is required' });
+    // APIキー決定: クライアント提供 or サーバー環境変数（無料モード）
+    let apiKey = req.headers['x-api-key'];
+    const isFreeMode = !apiKey || req.headers['x-free-mode'] === 'true';
+
+    if (isFreeMode) {
+      apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ error: '無料プレイ用のAPIキーが設定されていません' });
+      }
     }
 
     // Anthropic APIにリクエスト転送

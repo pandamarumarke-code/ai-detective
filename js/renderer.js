@@ -54,6 +54,44 @@ export function renderTitleStats() {
   `;
 }
 
+/**
+ * 無料プレイバッジを更新（タイトル画面に表示）
+ */
+export function renderFreePlayBadge() {
+  const el = $('#free-play-badge');
+  if (!el) return;
+
+  const { freePlayRemaining, apiKey } = store.state;
+
+  // BYOKモード（自前APIキー設定済み）→ バッジ非表示
+  if (apiKey) {
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'block';
+  if (freePlayRemaining > 0) {
+    el.innerHTML = `<span class="free-badge free-badge--active">🎁 無料プレイ 残り <strong>${freePlayRemaining}</strong> 回</span>`;
+  } else {
+    el.innerHTML = `<span class="free-badge free-badge--expired">無料枠を使い切りました — <a href="#" id="link-setup-apikey">APIキーを設定</a></span>`;
+    // 設定画面へのリンク
+    el.querySelector('#link-setup-apikey')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal('settings');
+    });
+  }
+}
+
+/**
+ * 無料枠切れアラート表示
+ */
+export function showFreePlayLimitAlert() {
+  const msg = '今月の無料プレイ（月3回）を使い切りました。\n\n' +
+    '引き続きプレイするには、設定画面からClaude APIキーを入力してください。\n' +
+    '（APIキーの取得方法はセットアップガイドをご覧ください）';
+  alert(msg);
+}
+
 export function initParticles() {
   const container = $('#particles');
   if (!container) return;

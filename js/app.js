@@ -33,12 +33,22 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // ゲームフロー制御
 // ================================================
 
-/** シナリオ生成を開始 */
+/** シナリオ生成を開始（無料モード / BYOKモード自動判定） */
 async function startGeneration() {
   const { apiKey, modelId, theme, difficulty } = store.state;
-  if (!apiKey) {
-    R.openModal('settings');
-    return;
+
+  // 無料モード判定: APIキーなし → 無料枠を使う
+  const isFreeMode = !apiKey;
+
+  if (isFreeMode) {
+    if (!store.canFreePlay()) {
+      // 無料枠切れ → 設定画面へ誘導
+      R.showFreePlayLimitAlert();
+      R.openModal('settings');
+      return;
+    }
+    // 無料枠を1回消費
+    store.consumeFreePlay();
   }
 
   R.showScreen('generating');
@@ -47,11 +57,12 @@ async function startGeneration() {
 
   try {
     const scenario = await generateScenario({
-      apiKey,
+      apiKey: isFreeMode ? 'FREE' : apiKey,
       modelId,
       theme,
       difficulty,
-      advisorEnabled: store.state.advisorEnabled,
+      advisorEnabled: isFreeMode ? false : store.state.advisorEnabled,
+      isFreeMode,
       onProgress: (step, status, detail) => R.updateGenStep(step, status, detail)
     });
 
@@ -59,13 +70,16 @@ async function startGeneration() {
 
     // ---- 画像生成フェーズ（条件付き） ----
     const { geminiApiKey, imageEnabled, imageModelId } = store.state;
+    // 無料モード: Geminiも無料キーで画像生成 / BYOK: ユーザーのキー
+    const effectiveGeminiKey = isFreeMode ? 'FREE' : geminiApiKey;
+    const shouldGenerateImages = isFreeMode ? true : (geminiApiKey && imageEnabled);
 
-    if (geminiApiKey && imageEnabled) {
+    if (shouldGenerateImages) {
       // Step 6: 場面画像 + 容疑者ポートレート
       R.updateGenStep(6, 'active');
       try {
         await generateSceneImages({
-          geminiApiKey,
+          geminiApiKey: effectiveGeminiKey,
           imageModelId,
           scenario,
           themeId: theme,
@@ -84,7 +98,7 @@ async function startGeneration() {
       R.updateGenStep(7, 'active');
       try {
         await generateCardImages({
-          geminiApiKey,
+          geminiApiKey: effectiveGeminiKey,
           imageModelId,
           scenario,
           phaseIndex: 0,
@@ -458,6 +472,7 @@ function setupEventListeners() {
 function init() {
   R.initParticles();
   R.renderTitleStats();
+  R.renderFreePlayBadge();
   setupEventListeners();
 
   // 設定モーダルの初期値を反映

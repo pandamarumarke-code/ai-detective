@@ -79,12 +79,18 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   const betaHeaders = ['structured-outputs-2025-11-13'];
   if (useAdvisor) betaHeaders.push(ADVISOR_CONFIG.betaHeader);
 
+  // 無料モード: x-api-keyを送らず、x-free-modeヘッダーでサーバーに通知
+  const isFreeMode = apiKey === 'FREE';
   const headers = {
     'Content-Type': 'application/json',
-    'x-api-key': apiKey,
     'anthropic-version': '2023-06-01',
     'anthropic-beta': betaHeaders.join(',')
   };
+  if (isFreeMode) {
+    headers['x-free-mode'] = 'true';
+  } else {
+    headers['x-api-key'] = apiKey;
+  }
 
   const response = await fetch(API_URL, {
     method: 'POST',

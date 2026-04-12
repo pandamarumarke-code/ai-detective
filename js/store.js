@@ -24,10 +24,12 @@ const STORAGE_KEYS = {
   GEMINI_API_KEY: 'ai_detective_apikey_gemini',
   GEMINI_MODEL: 'ai_detective_gemini_model',
   IMAGE_ENABLED: 'ai_detective_image_enabled',
-  ADVISOR_ENABLED: 'ai_detective_advisor_enabled'
+  ADVISOR_ENABLED: 'ai_detective_advisor_enabled',
+  FREE_PLAY: 'ai_detective_free_play'   // {month: 'YYYY-MM', count: N}
 };
 
 const MAX_HISTORY = 50;
+const FREE_PLAY_LIMIT = 3; // 月あたりの無料プレイ上限
 
 // ================================================
 // 初期ステート
@@ -45,6 +47,9 @@ function createInitialState() {
 
     // Advisor戦略（Opus+Sonnet連携、デフォルトON）
     advisorEnabled: localStorage.getItem(STORAGE_KEYS.ADVISOR_ENABLED) !== 'false',
+
+    // 無料プレイ管理
+    freePlayRemaining: calcFreePlayRemaining(),
 
     // ゲーム設定
     theme: 'classic',
@@ -85,6 +90,21 @@ function createInitialState() {
     currentScreen: 'title',
     playerNotes: ''
   };
+}
+
+/**
+ * 無料プレイ残回数を計算
+ * localStorageの月別カウンターを参照し、月が変わったら自動リセット
+ */
+function calcFreePlayRemaining() {
+  const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEYS.FREE_PLAY) || '{}');
+    if (data.month === currentMonth) {
+      return Math.max(0, FREE_PLAY_LIMIT - (data.count || 0));
+    }
+  } catch { /* ignore */ }
+  return FREE_PLAY_LIMIT; // 新しい月 or データなし → フルリセット
 }
 
 /**
@@ -261,6 +281,46 @@ class Store {
       hintsUsed: this._state.hintsUsed + 1,
       hintPenalty: this._state.hintPenalty + penalty
     });
+  }
+
+  /**
+   * 無料プレイを1回消費
+   * @returns {boolean} 消費成功したかtrue
+   */
+  consumeFreePlay() {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    let data;
+    try {
+      data = JSON.parse(localStorage.getItem(STORAGE_KEYS.FREE_PLAY) || '{}');
+    } catch { data = {}; }
+
+    // 月が変わったらリセット
+    if (data.month !== currentMonth) {
+      data = { month: currentMonth, count: 0 };
+    }
+
+    if (data.count >= FREE_PLAY_LIMIT) {
+      return false; // 上限到達
+    }
+
+    data.count++;
+    localStorage.setItem(STORAGE_KEYS.FREE_PLAY, JSON.stringify(data));
+    this.update({ freePlayRemaining: FREE_PLAY_LIMIT - data.count });
+    return true;
+  }
+
+  /**
+   * 無料プレイが可能か判定
+   */
+  canFreePlay() {
+    return this._state.freePlayRemaining > 0;
+  }
+
+  /**
+   * BYOモードか判定（ユーザーが自分のAPIキーを設定済み）
+   */
+  hasByokApiKey() {
+    return !!this._state.apiKey;
   }
 
   // ---- Observer パターン ----

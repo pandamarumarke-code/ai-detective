@@ -2466,3 +2466,54 @@ body {
     padding: var(--space-xs) var(--space-sm);
   }
 }
+
+/* ================================================
+   無料プレイバッジ
+   ================================================ */
+.free-play-badge {
+  margin-top: var(--space-lg);
+  text-align: center;
+}
+
+.free-badge {
+  display: inline-block;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-full);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  animation: fadeIn 0.5s ease;
+}
+
+.free-badge--active {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1));
+  border: 1px solid var(--border-gold);
+  color: var(--gold-200);
+}
+
+.free-badge--active strong {
+  color: var(--gold-400);
+  font-size: 1.3em;
+  margin: 0 2px;
+}
+
+.free-badge--expired {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.free-badge--expired a {
+  color: var(--gold-300);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.free-badge--expired a:hover {
+  color: var(--gold-400);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
