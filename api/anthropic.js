@@ -1,41 +1,54 @@
 // ================================================
 // @ai-spec
 // @module    api/anthropic
-// @purpose   Vercel Serverless Function — Anthropic Claude API へのCORSプロキシ
-// @depends   なし（Node.js built-in のみ）
+// @purpose   Vercel Edge Function — Anthropic Claude API へのストリーミングCORSプロキシ
+// @depends   なし（Web標準APIのみ）
 // @consumers js/claude.js (ブラウザから /api/anthropic にPOST)
 // @constraints
+//   - Edge Function: Vercel Hobbyプランでもタイムアウトしない（ストリーミング中は接続維持）
 //   - BYOKモード: クライアントのAPIキーをそのまま転送
 //   - 無料モード: x-api-keyなし → 環境変数 ANTHROPIC_API_KEY を使用
-//   - レスポンスボディはストリーミングせず、全体を受信してから返す
+//   - レスポンスをストリーミング転送（Claude API → ブラウザ）
 // @dataflow  ブラウザ → /api/anthropic → https://api.anthropic.com/v1/messages → ブラウザ
-// @updated   2026-04-12
+// @updated   2026-04-14
 // ================================================
 
-export default async function handler(req, res) {
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(req) {
   // CORS ヘッダー
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode');
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode',
+  };
 
   // プリフライト
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
     // APIキー決定: クライアント提供 or サーバー環境変数（無料モード）
-    let apiKey = req.headers['x-api-key'];
-    const isFreeMode = !apiKey || req.headers['x-free-mode'] === 'true';
+    let apiKey = req.headers.get('x-api-key');
+    const isFreeMode = !apiKey || req.headers.get('x-free-mode') === 'true';
 
     if (isFreeMode) {
       apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
-        return res.status(503).json({ error: '無料プレイ用のAPIキーが設定されていません' });
+        return new Response(
+          JSON.stringify({ error: '無料プレイ用のAPIキーが設定されていません' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
@@ -43,25 +56,37 @@ export default async function handler(req, res) {
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': req.headers['anthropic-version'] || '2023-06-01'
+      'anthropic-version': req.headers.get('anthropic-version') || '2023-06-01',
     };
 
     // Advisor Tool等のbetaヘッダーがあれば転送
-    if (req.headers['anthropic-beta']) {
-      headers['anthropic-beta'] = req.headers['anthropic-beta'];
+    const betaHeader = req.headers.get('anthropic-beta');
+    if (betaHeader) {
+      headers['anthropic-beta'] = betaHeader;
     }
+
+    const body = await req.json();
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers,
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-    return res.status(response.status).json(data);
+    // レスポンスをそのままストリーミング転送
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': response.headers.get('Content-Type') || 'application/json',
+      },
+    });
 
   } catch (error) {
     console.error('Anthropic proxy error:', error);
-    return res.status(500).json({ error: 'Proxy error', message: error.message });
+    return new Response(
+      JSON.stringify({ error: 'Proxy error', message: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }
