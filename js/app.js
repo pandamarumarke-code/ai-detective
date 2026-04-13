@@ -138,7 +138,11 @@ async function startGeneration() {
     }, 500);
   } catch (e) {
     console.error('シナリオ生成エラー:', e);
-    R.showGenError(`エラー: ${e.message}`);
+    // ネタバレ防止: ユーザーには詳細を見せず、安全なメッセージのみ表示
+    const safeMsg = e.message?.includes('構造検証') || e.message?.includes('解答チェーン')
+      ? 'シナリオの品質基準を満たせませんでした。再試行してください。'
+      : e.message;
+    R.showGenError(`エラー: ${safeMsg}`);
   }
 }
 

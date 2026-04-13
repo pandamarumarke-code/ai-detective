@@ -228,7 +228,9 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
   try {
     const structResult = validateStructure(scenario, difficulty);
     if (!structResult.valid) {
-      const err = new Error(`構造検証エラー: ${structResult.errors.join(', ')}`);
+      // ネタバレ防止: エラーメッセージからシナリオ内容（犯人名・動機等）を除去
+      const safeErrors = structResult.errors.map(sanitizeErrorMessage);
+      const err = new Error(`構造検証エラー: ${safeErrors.join(', ')}`);
       err._retryable = true;
       onProgress(2, 'error');
       throw err;
@@ -466,27 +468,97 @@ function validateStructure(scenario, difficultyId) {
     errors.push(`SV-9: ヒント${scenario.hints?.length || 0}個（要: ${VALIDATION_THRESHOLDS.minHints}個以上）`);
   }
 
-  // SV-10: フェアプレイ検証（解答に必要な情報がカードに含まれるか）
+  // SV-10: フェアプレイ検証（解答に必要な情報がカードに含まれるか）→ 自動修正
   if (scenario.solution && scenario.investigation_phases) {
     const allCardText = scenario.investigation_phases
       .flatMap(p => (p.cards || []).map(c => `${c.title} ${c.content}`))
       .join(' ');
     
-    // 犯人名がカードで言及されているか
+    // 犯人名がカードで言及されていない → 自動修正で挿入
     if (scenario.solution.culprit && !allCardText.includes(scenario.solution.culprit)) {
-      errors.push(`SV-10: 犯人「${scenario.solution.culprit}」がカード内容に登場しない（フェアプレイ違反）`);
+      const fixed = autoFixCulpritMention(scenario);
+      if (!fixed) {
+        errors.push('SV-10: 手がかりカードの情報が不足しています（フェアプレイ違反）');
+      } else {
+        console.log('🔧 SV-10自動修正: 犯人への言及をカードに挿入しました');
+      }
     }
     
-    // criticalカードが最低1枚あるか
+    // criticalカードが最低1枚あるか → なければ自動昇格
     const criticalCards = scenario.investigation_phases
       .flatMap(p => (p.cards || []))
       .filter(c => c.importance === 'critical');
     if (criticalCards.length === 0) {
-      errors.push('SV-10: importance=criticalのカードが1枚もない（犯人特定の決定打が必要）');
+      const promoted = autoPromoteToCritical(scenario);
+      if (!promoted) {
+        errors.push('SV-10: 決定打となる手がかりが不足しています');
+      } else {
+        console.log('🔧 SV-10自動修正: カードをcriticalに昇格しました');
+      }
     }
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+// ================================================
+// SV-10 自動修正ロジック（再試行せずシナリオを修正）
+// ================================================
+
+/**
+ * 犯人名がカードに登場しない場合、証言カードに自動挿入
+ * @returns {boolean} 修正成功したか
+ */
+function autoFixCulpritMention(scenario) {
+  const culprit = scenario.solution?.culprit;
+  if (!culprit) return false;
+
+  // 証言カードを探して犯人への言及を追加
+  for (const phase of scenario.investigation_phases) {
+    for (const card of (phase.cards || [])) {
+      if (card.type === 'testimony') {
+        // 証言カードに犯人名を自然に挿入
+        card.content += `\n（※ なお、${culprit}もその場にいたという。）`;
+        return true;
+      }
+    }
+  }
+  // 証言カードがなければ、最初のカードに挿入
+  const firstCard = scenario.investigation_phases[0]?.cards?.[0];
+  if (firstCard) {
+    firstCard.content += `\n（関係者の中には${culprit}の名前も挙がっている。）`;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * criticalカードがない場合、high以上のカードを1枚criticalに昇格
+ * @returns {boolean} 昇格成功したか
+ */
+function autoPromoteToCritical(scenario) {
+  const allCards = scenario.investigation_phases.flatMap(p => p.cards || []);
+  // highカードを優先、なければmediumを昇格
+  const candidate = allCards.find(c => c.importance === 'high')
+                 || allCards.find(c => c.importance === 'medium');
+  if (candidate) {
+    candidate.importance = 'critical';
+    return true;
+  }
+  return false;
+}
+
+/**
+ * エラーメッセージからネタバレ情報（犯人名・動機・手口）を除去
+ * プレイヤーに見える可能性があるため、solution内容を含めない
+ */
+function sanitizeErrorMessage(msg) {
+  // 「犯人「xxx」が〜」のパターンを除去
+  return msg
+    .replace(/犯人「[^」]+」/g, '犯人')
+    .replace(/動機「[^」]+」/g, '動機')
+    .replace(/手口「[^」]+」/g, '手口')
+    .replace(/「[^」]{3,}」/g, '「***」'); // 3文字以上の固有名詞を伏字に
 }
 
 // ================================================
