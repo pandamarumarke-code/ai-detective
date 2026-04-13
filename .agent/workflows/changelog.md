@@ -1,5 +1,16 @@
 # AI探偵団 Changelog
 
+## 2026-04-13 12:35 — v6.0 マーダーミステリー型時系列進行（CWFモデル）
+- **ステータス**: ✅ 完了（デプロイ済み・E2Eテスト合格）
+- **設計方針**: マーダーミステリーの3幕構成（導入→調査→新事実→調査→急展開→最終調査→推理）を導入
+- **変更ファイル**:
+  - `js/constants.js` — スキーマに`phase_title`/`phase_narrative`追加、プロンプトにMM型進行指示追加
+  - `js/renderer.js` — `renderPhaseNarrative()`新規追加、`showGamePanel`にnarrative登録
+  - `js/app.js` — `startInvestigation`をストーリー展開→カード表示にフロー変更、`showInvestigationCards`分離
+  - `index.html` — `panel-narrative`（物語展開パネル）HTML追加
+  - `css/style.css` — シネマティック演出CSS（フェードイン+フローティング+ゴールドボーダー）
+- **変更ファイル数**: 6ファイル（153行追加、3行削除）
+
 ## 2026-04-13 12:12 — SV-10自動修正 + ネタバレ防止（CWF × UIデバッグスキル）
 - **ステータス**: ✅ 完了（デプロイ済み・E2Eテスト合格）
 - **根本原因分析（RCA）**:

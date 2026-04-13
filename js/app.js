@@ -845,7 +845,7 @@ function init() {
   // URLハッシュから共有シナリオを検出
   const isShared = checkForSharedScenario();
   if (!isShared) {
-    console.log('🔍 AI探偵団 v5.0 — 初期化完了（DNA + 解答チェーン + 推理メモ）');
+    console.log('🔍 AI探偵団 v6.0 — 初期化完了（MM型進行 + DNA + 解答チェーン + 推理メモ）');
   } else {
     console.log('🔗 AI探偵団 — 共有シナリオを検出');
   }
