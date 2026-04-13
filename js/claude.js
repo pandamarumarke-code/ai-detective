@@ -11,7 +11,7 @@
 //   - CORSプロキシ(localhost:3457)経由でのみ通信
 //   - Advisor Tool使用時は beta header 必須
 // @dataflow  app.js → callClaude() → CORSプロキシ → Anthropic API → JSON → app.js
-// @updated   2026-04-12
+// @updated   2026-04-14
 // ================================================
 // AI探偵団 — Claude API通信モジュール（ステートレス）
 // 4パス検証パイプライン:

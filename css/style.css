@@ -2927,11 +2927,13 @@ body {
    ================================================ */
 .blackout-container {
   position: relative;
+  overflow: hidden;
   max-width: 620px;
   margin: 0 auto;
   padding: var(--space-3xl) var(--space-xl);
   text-align: center;
   animation: blackoutFadeIn 1.5s ease;
+  min-height: 60vh;
 }
 
 @keyframes blackoutFadeIn {
@@ -2941,7 +2943,7 @@ body {
 }
 
 .blackout-vignette {
-  position: fixed;
+  position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: radial-gradient(ellipse at center, transparent 30%, rgba(80, 0, 0, 0.3) 100%);
   pointer-events: none;
@@ -3016,6 +3018,11 @@ body {
 }
 
 .blackout-continue-btn {
-  animation: fadeInUp 1s ease 2s both;
+  animation: blackoutBtnReveal 1s ease 2s both;
   margin-top: var(--space-2xl);
+}
+
+@keyframes blackoutBtnReveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

@@ -10,7 +10,7 @@
 //   - 自前でstateを持たない（store.stateのみ参照）
 //   - store.update() は呼ばない（app.jsが担当）
 // @dataflow  store.state → renderer.js → DOM更新
-// @updated   2026-04-12
+// @updated   2026-04-14
 // ================================================
 // AI探偵団 — DOM描画モジュール（ステートからDOMへの単方向データフロー）
 // store.stateを読み、DOMを更新するだけ。自前でstateは持たない。

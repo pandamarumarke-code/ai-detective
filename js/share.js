@@ -178,6 +178,14 @@ function stripSolution(scenario) {
       answer: '(シェアデータのため非表示)'
     }));
   }
+  // culprit_flashbacksからtime_hintを除去（推理ヒントの漏洩防止）
+  // monologue（独白テキスト）はゲーム体験の一部として保持する
+  if (copy.culprit_flashbacks) {
+    copy.culprit_flashbacks = copy.culprit_flashbacks.map(fb => ({
+      ...fb,
+      time_hint: '(非表示)'
+    }));
+  }
   return copy;
 }
 
