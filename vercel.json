@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "api/anthropic.js": {
+      "maxDuration": 300
+    },
+    "api/gemini.js": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     { "source": "/api/anthropic", "destination": "/api/anthropic" },
     { "source": "/api/gemini/(.*)", "destination": "/api/gemini" }

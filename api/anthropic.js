@@ -1,102 +1,68 @@
 // ================================================
 // @ai-spec
 // @module    api/anthropic
-// @purpose   Vercel Edge Function — Anthropic Claude API へのストリーミングCORSプロキシ
-// @depends   なし（Web標準APIのみ）
+// @purpose   Vercel Serverless Function — Anthropic Claude API へのCORSプロキシ
+// @depends   なし（Node.js built-in のみ）
 // @consumers js/claude.js (ブラウザから /api/anthropic にPOST)
 // @constraints
-//   - Edge Function + ストリーミング: Vercel Hobbyの30秒制限を回避
-//   - リクエストに stream:true を強制注入
-//   - Claude SSEイベントをそのままクライアントに転送
+//   - maxDuration: 300s（Fluid Compute有効）でタイムアウト回避
 //   - BYOKモード: クライアントのAPIキーをそのまま転送
 //   - 無料モード: x-api-keyなし → 環境変数 ANTHROPIC_API_KEY を使用
-// @dataflow  ブラウザ → /api/anthropic → Claude API (SSE) → ブラウザ
+//   - レスポンスボディは全体を受信してから返す（非ストリーミング）
+// @dataflow  ブラウザ → /api/anthropic → https://api.anthropic.com/v1/messages → ブラウザ
 // @updated   2026-04-14
 // ================================================
 
-export const config = {
-  runtime: 'edge',
-};
+export default async function handler(req, res) {
+  // CORS ヘッダー
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode');
 
-export default async function handler(req) {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode',
-  };
-
+  // プリフライト
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    let apiKey = req.headers.get('x-api-key');
-    const isFreeMode = !apiKey || req.headers.get('x-free-mode') === 'true';
+    // APIキー決定: クライアント提供 or サーバー環境変数（無料モード）
+    let apiKey = req.headers['x-api-key'];
+    const isFreeMode = !apiKey || req.headers['x-free-mode'] === 'true';
 
     if (isFreeMode) {
       apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
-        return new Response(
-          JSON.stringify({ error: '無料プレイ用のAPIキーが設定されていません' }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return res.status(503).json({ error: '無料プレイ用のAPIキーが設定されていません' });
       }
     }
 
+    // Anthropic APIにリクエスト転送
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': req.headers.get('anthropic-version') || '2023-06-01',
+      'anthropic-version': req.headers['anthropic-version'] || '2023-06-01'
     };
 
-    const betaHeader = req.headers.get('anthropic-beta');
-    if (betaHeader) {
-      headers['anthropic-beta'] = betaHeader;
+    // Advisor Tool等のbetaヘッダーがあれば転送
+    if (req.headers['anthropic-beta']) {
+      headers['anthropic-beta'] = req.headers['anthropic-beta'];
     }
-
-    const body = await req.json();
-
-    // ストリーミングを強制有効化（Vercelタイムアウト回避）
-    body.stream = true;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(req.body)
     });
 
-    if (!response.ok) {
-      // エラーレスポンスはそのまま返す
-      const errText = await response.text();
-      return new Response(errText, {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // SSEストリームをそのままクライアントに転送
-    return new Response(response.body, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    const data = await response.json();
+    return res.status(response.status).json(data);
 
   } catch (error) {
     console.error('Anthropic proxy error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Proxy error', message: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return res.status(500).json({ error: 'Proxy error', message: error.message });
   }
 }
