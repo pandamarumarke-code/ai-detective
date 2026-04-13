@@ -544,7 +544,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  width: 300px;
+  width: 340px;
 }
 
 .gen-step {
@@ -567,6 +567,71 @@ body {
 .gen-step-icon {
   width: 24px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.gen-step-label {
+  flex: 1;
+}
+
+.gen-step-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* プログレスバー + 経過時間 */
+.gen-progress-area {
+  width: 340px;
+  text-align: center;
+}
+
+.gen-elapsed {
+  font-size: 1rem;
+  color: var(--gold-400);
+  margin-bottom: var(--space-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gen-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold-400), var(--gold-300));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.gen-progress-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* サブメッセージ（Step 1長時間待機中） */
+.gen-submessage {
+  width: 340px;
+  text-align: center;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  animation: fadeInSub 0.5s ease;
+}
+
+@keyframes fadeInSub {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .generating-error {

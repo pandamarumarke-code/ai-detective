@@ -133,40 +133,64 @@
         </div>
       </div>
       <h2 class="generating-title">事件ファイルを構築中...</h2>
+
+      <!-- 経過時間 + プログレスバー -->
+      <div class="gen-progress-area">
+        <div class="gen-elapsed" id="gen-elapsed">⏱️ 0:00 経過</div>
+        <div class="gen-progress-bar">
+          <div class="gen-progress-fill" id="gen-progress-fill"></div>
+        </div>
+        <div class="gen-progress-label" id="gen-progress-label">0 / 8 ステップ</div>
+      </div>
+
       <div class="generating-steps">
         <div class="gen-step" id="gen-step-1">
           <span class="gen-step-icon">⏳</span>
-          <span>シナリオを生成中...</span>
+          <span class="gen-step-label">シナリオを生成中...</span>
+          <span class="gen-step-time" id="gen-time-1"></span>
         </div>
         <div class="gen-step" id="gen-step-2">
           <span class="gen-step-icon">⏳</span>
-          <span>構造を検証中...</span>
+          <span class="gen-step-label">構造を検証中...</span>
+          <span class="gen-step-time" id="gen-time-2"></span>
         </div>
         <div class="gen-step" id="gen-step-3">
           <span class="gen-step-icon">⏳</span>
-          <span>論理整合性を検証中...</span>
+          <span class="gen-step-label">論理整合性を検証中...</span>
+          <span class="gen-step-time" id="gen-time-3"></span>
         </div>
         <div class="gen-step" id="gen-step-4">
           <span class="gen-step-icon">⏳</span>
-          <span>日本語品質をチェック中...</span>
+          <span class="gen-step-label">日本語品質をチェック中...</span>
+          <span class="gen-step-time" id="gen-time-4"></span>
         </div>
         <div class="gen-step" id="gen-step-5">
           <span class="gen-step-icon">⏳</span>
-          <span>最終調整中...</span>
+          <span class="gen-step-label">最終調整中...</span>
+          <span class="gen-step-time" id="gen-time-5"></span>
         </div>
         <div class="gen-step" id="gen-step-6">
           <span class="gen-step-icon">⏳</span>
-          <span>🎨 イメージ生成中...</span>
+          <span class="gen-step-label">🎨 イメージ生成中...</span>
+          <span class="gen-step-time" id="gen-time-6"></span>
         </div>
         <div class="gen-step" id="gen-step-7">
           <span class="gen-step-icon">⏳</span>
-          <span>🎨 カードイラスト生成中...</span>
+          <span class="gen-step-label">🎨 カードイラスト生成中...</span>
+          <span class="gen-step-time" id="gen-time-7"></span>
         </div>
         <div class="gen-step" id="gen-step-8">
           <span class="gen-step-icon">⏳</span>
-          <span>事件ファイル完成！</span>
+          <span class="gen-step-label">事件ファイル完成！</span>
+          <span class="gen-step-time" id="gen-time-8"></span>
         </div>
       </div>
+
+      <!-- サブメッセージ（Step 1の長時間待機中に表示） -->
+      <div class="gen-submessage" id="gen-submessage" style="display:none;">
+        <span id="gen-submessage-text"></span>
+      </div>
+
       <div class="generating-retry" id="gen-retry" style="display:none;">
         <span class="retry-icon">🔄</span>
         <span id="gen-retry-text">リトライ中...</span>

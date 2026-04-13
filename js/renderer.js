@@ -107,8 +107,25 @@ export function initParticles() {
 }
 
 // ================================================
-// 生成中画面
-// ================================================
+// 生成中画面のタイマー管理
+let _genStartTime = null;
+let _genElapsedTimer = null;
+let _stepStartTimes = {};
+let _completedSteps = 0;
+const TOTAL_STEPS = 8;
+
+// Step 1が長時間かかる時のサブメッセージ（ローテーション表示）
+const GEN_SUB_MESSAGES = [
+  'AIが事件の舞台を構想しています...',
+  '容疑者のアリバイを組み立てています...',
+  'レッドヘリング（偽の手がかり）を仕込んでいます...',
+  'フェアプレイ原則に基づく推理を設計中...',
+  '犯行の動機とトリックを練り上げています...',
+  '手がかりカードの内容を精査しています...',
+  '暗転シーン（犯人の独白）を作成中...',
+];
+let _subMsgIndex = 0;
+let _subMsgTimer = null;
 
 export function updateGenStep(step, status, detail) {
   // step=0はリトライ通知（特別処理）
@@ -126,11 +143,100 @@ export function updateGenStep(step, status, detail) {
     const icons = { done: '✅', active: '🔄', error: '❌', retry: '🔄' };
     icon.textContent = icons[status] || '⏳';
   }
+
+  // ステップ開始時刻を記録
+  if (status === 'active') {
+    _stepStartTimes[step] = Date.now();
+    // Step 1開始時にサブメッセージ表示を開始
+    if (step === 1) startSubMessages();
+  }
+
+  // ステップ完了時: 所要時間を表示
+  if (status === 'done') {
+    const timeEl = $(`#gen-time-${step}`);
+    if (timeEl && _stepStartTimes[step]) {
+      const elapsed = ((Date.now() - _stepStartTimes[step]) / 1000).toFixed(1);
+      timeEl.textContent = `(${elapsed}秒)`;
+    }
+    _completedSteps++;
+    updateProgressBar();
+    // サブメッセージを停止
+    if (step === 1) stopSubMessages();
+  }
+
+  // エラー時: サブメッセージを停止
+  if (status === 'error') {
+    stopSubMessages();
+    stopElapsedTimer();
+  }
+}
+
+function updateProgressBar() {
+  const fill = $('#gen-progress-fill');
+  const label = $('#gen-progress-label');
+  if (fill) {
+    const pct = Math.round((_completedSteps / TOTAL_STEPS) * 100);
+    fill.style.width = `${pct}%`;
+  }
+  if (label) {
+    label.textContent = `${_completedSteps} / ${TOTAL_STEPS} ステップ`;
+  }
+}
+
+function startElapsedTimer() {
+  _genStartTime = Date.now();
+  _genElapsedTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - _genStartTime) / 1000);
+    const min = Math.floor(elapsed / 60);
+    const sec = String(elapsed % 60).padStart(2, '0');
+    const el = $('#gen-elapsed');
+    if (el) el.textContent = `⏱️ ${min}:${sec} 経過`;
+  }, 1000);
+}
+
+function stopElapsedTimer() {
+  if (_genElapsedTimer) {
+    clearInterval(_genElapsedTimer);
+    _genElapsedTimer = null;
+  }
+}
+
+function startSubMessages() {
+  _subMsgIndex = 0;
+  const el = $('#gen-submessage');
+  const textEl = $('#gen-submessage-text');
+  if (el) el.style.display = 'block';
+  if (textEl) textEl.textContent = GEN_SUB_MESSAGES[0];
+
+  _subMsgTimer = setInterval(() => {
+    _subMsgIndex = (_subMsgIndex + 1) % GEN_SUB_MESSAGES.length;
+    if (textEl) textEl.textContent = GEN_SUB_MESSAGES[_subMsgIndex];
+  }, 5000);
+}
+
+function stopSubMessages() {
+  if (_subMsgTimer) {
+    clearInterval(_subMsgTimer);
+    _subMsgTimer = null;
+  }
+  const el = $('#gen-submessage');
+  if (el) el.style.display = 'none';
 }
 
 export function resetGenSteps() {
   for (let i = 1; i <= 8; i++) updateGenStep(i, '');
   $('#gen-error').style.display = 'none';
+  _completedSteps = 0;
+  _stepStartTimes = {};
+  // プログレスバーリセット
+  const fill = $('#gen-progress-fill');
+  if (fill) fill.style.width = '0%';
+  const label = $('#gen-progress-label');
+  if (label) label.textContent = '0 / 8 ステップ';
+  // タイマー開始
+  stopElapsedTimer();
+  stopSubMessages();
+  startElapsedTimer();
 }
 
 export function showGenRetry(message) {
