@@ -25,6 +25,16 @@
 - **Git**: `56992e3` main → Vercel自動デプロイ
 - **検証レポート**: verification_report.md（9件指摘、3件対応済み、6件は仕様判断/将来対応）
 
+## 2026-04-14 01:17 — v7.0.2 3軸AI検証レポート残り4件対応
+- **ステータス**: ✅ 完了（デプロイ済み）
+- **変更ファイル**:
+  - `js/constants.js`, `js/renderer.js`, `js/app.js`, `js/claude.js` — @ai-spec @updated日付を2026-04-14に更新
+  - `css/style.css` — ビネットCSS position:fixed→absolute（サイドバー影響防止）+ blackoutBtnRevealアニメーション独立化
+  - `js/share.js` — stripSolution()でculprit_flashbacksのtime_hint除去（推理ヒント漏洩防止）
+- **変更ファイル数**: 7ファイル（32行追加、6行削除）
+- **Git**: `efbbf2b` main → Vercel自動デプロイ
+- **検証レポート完了**: 9件中7件対応済み / 2件は仕様として許容（R-2: easyモード暗転1回, S-2: マルチプレイはコードOK）
+
 ## 2026-04-13 12:35 — v6.0 マーダーミステリー型時系列進行（CWFモデル）
 - **ステータス**: ✅ 完了（デプロイ済み・E2Eテスト合格）
 - **設計方針**: マーダーミステリーの3幕構成（導入→調査→新事実→調査→急展開→最終調査→推理）を導入

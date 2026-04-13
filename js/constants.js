@@ -599,9 +599,7 @@ export const SCENARIO_SCHEMA = {
       },
       culprit_flashbacks: {
         type: 'array',
-        description: '犯人視点の断片的独白（2つ）。犯人名は絶対に含めない。',
-        minItems: 2,
-        maxItems: 2,
+        description: '犯人視点の断片的独白（必ず2つ生成すること）。犯人名は絶対に含めない。',
         items: {
           type: 'object',
           required: ['id', 'monologue', 'time_hint'],
