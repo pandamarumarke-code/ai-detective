@@ -2857,3 +2857,67 @@ body {
   white-space: pre-wrap;
   line-height: 1.5;
 }
+
+/* ================================================
+   物語展開パネル（マーダーミステリー型進行）
+   ================================================ */
+.narrative-container {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: center;
+  animation: fadeInUp 0.8s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.narrative-icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-lg);
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.3));
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.narrative-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gold-500);
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--border-gold);
+  padding-bottom: var(--space-md);
+  letter-spacing: 2px;
+}
+
+.narrative-text {
+  font-size: 1rem;
+  line-height: 2;
+  color: var(--text-secondary);
+  text-align: left;
+  white-space: pre-wrap;
+  margin-bottom: var(--space-2xl);
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid var(--gold-500);
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  animation: fadeInUp 1.2s ease 0.3s both;
+}
+
+#btn-continue-investigation {
+  animation: fadeInUp 1s ease 0.8s both;
+  font-size: 1.05rem;
+  padding: var(--space-md) var(--space-2xl);
+}

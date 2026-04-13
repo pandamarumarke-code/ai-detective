@@ -212,7 +212,7 @@ function startSharedGame() {
   R.showScreen('game');
 }
 
-/** 調査フェイズを開始 */
+/** 調査フェイズを開始（マーダーミステリー型: ストーリー展開→カード表示） */
 function startInvestigation(phaseIndex) {
   const s = store.state.scenario;
   if (!s) return;
@@ -222,6 +222,15 @@ function startInvestigation(phaseIndex) {
     return;
   }
 
+  // まずストーリー展開を表示 → 「調査を開始する」ボタン → カード画面
+  R.renderPhaseNarrative(phaseIndex, () => {
+    showInvestigationCards(phaseIndex);
+  });
+}
+
+/** カード表示と調査ロジック（startInvestigationから分離） */
+function showInvestigationCards(phaseIndex) {
+  const s = store.state.scenario;
   const phase = s.investigation_phases[phaseIndex];
   const selectable = phase.selectable || 2;
 

@@ -344,6 +344,27 @@ ${banList}${dnaSection}
 
 プレイヤーはフォーカスエリアを見て「書斎を調べるか、田中に聞くか」を選ぶ体験をします。
 
+## 🎭 マーダーミステリー型時系列進行（最重要）
+**各調査フェーズには「物語展開文（phase_narrative）」と「フェーズタイトル（phase_title）」を必ず付けてください。**
+プレイヤーはカードを選ぶ前にこの展開文を読み、物語の中で「次に何が起きたか」を体験します。
+
+### フェーズ進行の設計原則：
+- **第1フェーズ**: 事件直後の現場。導入文の続きとして最初の調査開始。
+  - phase_title例: "第1幕 — 現場検証"
+  - phase_narrative: 現場の状況や初動捜査の描写（100〜200文字）
+- **第2フェーズ**: 調査中に「新事実」が判明。事件が動く瞬間。
+  - phase_title例: "第2幕 — 隠し部屋の発見"
+  - phase_narrative: 前のフェーズの調査結果を受けて新展開が起きる（150〜300文字）
+- **第3フェーズ**: さらなる急展開。真相に近づく緊迫感。
+  - phase_title例: "第3幕 — 崩れるアリバイ"
+  - phase_narrative: 決定的な転換点となる出来事が起きる（150〜300文字）
+
+### phase_narrativeの書き方ルール：
+1. 前のフェーズで調査した結果を受けての展開であること
+2. プレイヤーが「次は何を調べよう？」と思える情報を含むこと
+3. 臨場感のある描写で、小説の一節のように書くこと
+4. 犯人を直接示す情報は含めないこと（フェアプレイ原則）
+
 ## 必須条件
 1. 手がかりカードだけで論理的に犯人を特定できること（フェアプレイ原則）
 2. 全容疑者にもっともらしい動機があること
@@ -535,10 +556,12 @@ export const SCENARIO_SCHEMA = {
         type: 'array',
         items: {
           type: 'object',
-          required: ['phase', 'total_cards', 'selectable', 'cards'],
+          required: ['phase', 'phase_title', 'phase_narrative', 'total_cards', 'selectable', 'cards'],
           additionalProperties: false,
           properties: {
             phase: { type: 'integer' },
+            phase_title: { type: 'string', description: 'フェーズタイトル（例: 第1幕 — 現場検証）' },
+            phase_narrative: { type: 'string', description: 'このフェーズ冒頭の物語展開文（100〜300文字）' },
             total_cards: { type: 'integer' },
             selectable: { type: 'integer' },
             cards: {

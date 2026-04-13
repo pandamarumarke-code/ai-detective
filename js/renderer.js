@@ -185,6 +185,33 @@ export function renderIntro() {
 // ================================================
 
 /**
+ * 物語展開画面を表示（マーダーミステリー型進行）
+ * カード選択の前にストーリーの展開を見せる
+ * @param {number} phaseIndex
+ * @param {Function} onContinue - 「調査を開始する」ボタンのコールバック
+ */
+export function renderPhaseNarrative(phaseIndex, onContinue) {
+  const phase = store.state.scenario.investigation_phases[phaseIndex];
+  if (!phase?.phase_narrative) {
+    // phase_narrativeがなければスキップして直接カード画面へ
+    onContinue();
+    return;
+  }
+
+  // タイトルとテキストを設定
+  $('#narrative-title').textContent = phase.phase_title || `第${phaseIndex + 1}幕`;
+  $('#narrative-text').textContent = phase.phase_narrative;
+
+  // 「調査を開始する」ボタンのイベントリスナーを設定
+  const btn = $('#btn-continue-investigation');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', onContinue);
+
+  showGamePanel('narrative');
+}
+
+/**
  * @param {number} phaseIndex - 0始まりのフェイズインデックス
  * @param {Function} onCardToggle - カード選択変更時コールバック
  */
@@ -579,7 +606,7 @@ export function renderHistoryList() {
 // ================================================
 
 function showGamePanel(panel) {
-  ['intro', 'investigation', 'answer'].forEach(p => {
+  ['intro', 'narrative', 'investigation', 'answer'].forEach(p => {
     const el = $(`#panel-${p}`);
     if (el) el.style.display = p === panel ? 'block' : 'none';
   });
