@@ -185,6 +185,31 @@ export function renderIntro() {
 // ================================================
 
 /**
+ * 暗転シーン（犯人視点フラッシュバック）を表示
+ * @param {number} flashbackIndex - 0始まりのフラッシュバックインデックス
+ * @param {Function} onContinue - 「調査を続ける」ボタンのコールバック
+ */
+export function renderBlackoutScene(flashbackIndex, onContinue) {
+  const flashbacks = store.state.scenario.culprit_flashbacks;
+  if (!flashbacks || !flashbacks[flashbackIndex]) {
+    // フラッシュバックがなければスキップ
+    onContinue();
+    return;
+  }
+
+  const fb = flashbacks[flashbackIndex];
+  $('#blackout-monologue').textContent = fb.monologue;
+
+  // 「調査を続ける」ボタンのイベントリスナー
+  const btn = $('#btn-continue-after-blackout');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', onContinue);
+
+  showGamePanel('blackout');
+}
+
+/**
  * 物語展開画面を表示（マーダーミステリー型進行）
  * カード選択の前にストーリーの展開を見せる
  * @param {number} phaseIndex
@@ -606,7 +631,7 @@ export function renderHistoryList() {
 // ================================================
 
 function showGamePanel(panel) {
-  ['intro', 'narrative', 'investigation', 'answer'].forEach(p => {
+  ['intro', 'blackout', 'narrative', 'investigation', 'answer'].forEach(p => {
     const el = $(`#panel-${p}`);
     if (el) el.style.display = p === panel ? 'block' : 'none';
   });

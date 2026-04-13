@@ -2921,3 +2921,101 @@ body {
   font-size: 1.05rem;
   padding: var(--space-md) var(--space-2xl);
 }
+
+/* ================================================
+   暗転シーン（犯人視点フラッシュバック）
+   ================================================ */
+.blackout-container {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: center;
+  animation: blackoutFadeIn 1.5s ease;
+}
+
+@keyframes blackoutFadeIn {
+  0%   { opacity: 0; }
+  30%  { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.blackout-vignette {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(80, 0, 0, 0.3) 100%);
+  pointer-events: none;
+  z-index: 0;
+  animation: vignetteFlicker 4s ease-in-out infinite;
+}
+
+@keyframes vignetteFlicker {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.blackout-content {
+  position: relative;
+  z-index: 1;
+}
+
+.blackout-label {
+  font-size: 0.85rem;
+  letter-spacing: 8px;
+  color: #ff4444;
+  text-transform: uppercase;
+  margin: var(--space-xl) 0;
+  opacity: 0.7;
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+  animation: labelPulse 2s ease-in-out infinite;
+}
+
+@keyframes labelPulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.9; }
+}
+
+.blackout-monologue {
+  font-size: 1.05rem;
+  line-height: 2.2;
+  color: rgba(255, 255, 255, 0.85);
+  font-style: italic;
+  text-align: left;
+  white-space: pre-wrap;
+  padding: var(--space-xl) var(--space-2xl);
+  border-left: 2px solid rgba(255, 68, 68, 0.3);
+  border-right: 2px solid rgba(255, 68, 68, 0.3);
+  margin: var(--space-lg) 0;
+  animation: monologueReveal 2s ease 0.5s both;
+  position: relative;
+}
+
+.blackout-monologue::before {
+  content: '❝';
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  font-size: 2rem;
+  color: rgba(255, 68, 68, 0.3);
+  font-style: normal;
+}
+
+.blackout-monologue::after {
+  content: '❞';
+  position: absolute;
+  bottom: -10px;
+  right: 10px;
+  font-size: 2rem;
+  color: rgba(255, 68, 68, 0.3);
+  font-style: normal;
+}
+
+@keyframes monologueReveal {
+  from { opacity: 0; transform: translateY(15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.blackout-continue-btn {
+  animation: fadeInUp 1s ease 2s both;
+  margin-top: var(--space-2xl);
+}

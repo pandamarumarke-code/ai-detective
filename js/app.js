@@ -285,7 +285,16 @@ function confirmCards() {
     const s = store.state.scenario;
 
     if (nextPhaseIndex < s.investigation_phases.length) {
-      R.showNextPhaseButton(`第${nextPhaseIndex + 1}調査へ →`, () => startInvestigation(nextPhaseIndex));
+      // 暗転シーン → ストーリー展開 → 次の調査カード の3段階フロー
+      // 暗転は調査①後(flashback[0])と調査②後(flashback[1])の2回
+      const fbIndex = nextPhaseIndex - 1; // 調査0完了→fb[0], 調査1完了→fb[1]
+      if (fbIndex >= 0 && fbIndex < 2) {
+        R.showNextPhaseButton(`第${nextPhaseIndex + 1}調査へ →`, () => {
+          R.renderBlackoutScene(fbIndex, () => startInvestigation(nextPhaseIndex));
+        });
+      } else {
+        R.showNextPhaseButton(`第${nextPhaseIndex + 1}調査へ →`, () => startInvestigation(nextPhaseIndex));
+      }
     } else {
       R.showNextPhaseButton('📝 最終推理に進む', () => R.renderAnswerPhase());
     }

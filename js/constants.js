@@ -365,6 +365,18 @@ ${banList}${dnaSection}
 3. 臨場感のある描写で、小説の一節のように書くこと
 4. 犯人を直接示す情報は含めないこと（フェアプレイ原則）
 
+## 🔴 暗転シーン（犯人のフラッシュバック）
+各調査フェーズの合間に、犯人視点の断片的な独白テキスト（culprit_flashbacks）を2つ生成してください。
+
+### ルール（厳守）：
+1. **犯人の名前は絶対に含めない**。一人称は「私」のみ使用
+2. 独白は犯行の「一部分」だけを断片的に描写する（全容は明かさない）
+3. 時間・場所・行動の断片が含まれること（推理の手がかりになる）
+4. 独白1は犯行直前の心理、独白2は犯行中〜直後の行動を描写
+5. 80〜200文字の臨場感ある日本語で書くこと
+6. 読者が「この独白の主は誰か？」と考えさせる情報を含むこと（ただし確定はできない）
+7. time_hintには独白中に登場する具体的な時刻を記載すること
+
 ## 必須条件
 1. 手がかりカードだけで論理的に犯人を特定できること（フェアプレイ原則）
 2. 全容疑者にもっともらしい動機があること
@@ -508,7 +520,7 @@ export const SCENARIO_SCHEMA = {
   strict: true,
   schema: {
     type: 'object',
-    required: ['title', 'setting', 'introduction', 'victim', 'suspects', 'investigation_phases', 'solution', 'questions', 'full_story', 'hints'],
+    required: ['title', 'setting', 'introduction', 'victim', 'suspects', 'investigation_phases', 'culprit_flashbacks', 'solution', 'questions', 'full_story', 'hints'],
     additionalProperties: false,
     properties: {
       title: { type: 'string', description: '事件名（20文字以内）' },
@@ -582,6 +594,20 @@ export const SCENARIO_SCHEMA = {
                 }
               }
             }
+          }
+        }
+      },
+      culprit_flashbacks: {
+        type: 'array',
+        description: '犯人視点の断片的独白（2つ）。犯人名は絶対に含めない。',
+        items: {
+          type: 'object',
+          required: ['id', 'monologue', 'time_hint'],
+          additionalProperties: false,
+          properties: {
+            id: { type: 'integer', description: '1始まりの連番' },
+            monologue: { type: 'string', description: '犯人の一人称独白（80〜200文字）。名前は"私"のみ使用。犯人が誰か特定できない書き方にすること。' },
+            time_hint: { type: 'string', description: '独白中の時間的ヒント（例: "23時15分"）' }
           }
         }
       },
