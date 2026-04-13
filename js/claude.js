@@ -172,72 +172,116 @@ async function parseSSEStream(response) {
   let currentJsonDelta = '';  // tool_use ブロック用
   let messageData = {};       // message_start のデータ
   let usageData = {};         // 最終 usage
+  let rawAccumulated = '';    // デバッグ用: 全受信テキスト
+  let eventCount = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  // 3分タイムアウト（無限ストリーム防止）
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('SSEストリーム3分タイムアウト')), 180000)
+  );
 
-    buffer += decoder.decode(value, { stream: true });
+  const streamProcess = (async () => {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    // SSEイベントを1行ずつ処理
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || ''; // 最後の不完全な行を保持
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      rawAccumulated += chunk;
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const jsonStr = line.slice(6).trim();
-      if (jsonStr === '[DONE]') continue;
+      // SSEイベントは \n\n で区切られる
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || ''; // 最後の不完全なイベントを保持
 
-      let event;
-      try { event = JSON.parse(jsonStr); } catch { continue; }
+      for (const eventBlock of events) {
+        // 各イベントブロックから data: 行を抽出
+        const dataLines = eventBlock.split('\n')
+          .filter(line => line.startsWith('data:'))
+          .map(line => line.slice(5).trim());
 
-      switch (event.type) {
-        case 'message_start':
-          messageData = event.message || {};
-          usageData = messageData.usage || {};
-          break;
+        if (dataLines.length === 0) continue;
 
-        case 'content_block_start':
-          currentBlockIndex = event.index ?? contentBlocks.length;
-          currentBlockType = event.content_block?.type || 'text';
-          currentText = event.content_block?.text || '';
-          currentJsonDelta = '';
-          // advisor_tool_result は content_block_start に完全データが入る
-          if (currentBlockType === 'advisor_tool_result' || currentBlockType === 'server_tool_use') {
-            contentBlocks[currentBlockIndex] = { ...event.content_block };
-          }
-          break;
+        const jsonStr = dataLines.join('');
+        if (jsonStr === '[DONE]') continue;
 
-        case 'content_block_delta':
-          if (event.delta?.type === 'text_delta') {
-            currentText += event.delta.text || '';
-          } else if (event.delta?.type === 'input_json_delta') {
-            currentJsonDelta += event.delta.partial_json || '';
-          }
-          break;
+        let event;
+        try { event = JSON.parse(jsonStr); } catch { continue; }
 
-        case 'content_block_stop':
-          if (currentBlockType === 'text') {
-            contentBlocks[currentBlockIndex] = { type: 'text', text: currentText };
-          } else if (currentBlockType === 'tool_use') {
-            let parsedInput = {};
-            try { parsedInput = JSON.parse(currentJsonDelta); } catch { /* */ }
-            contentBlocks[currentBlockIndex] = {
-              type: 'tool_use',
-              input: parsedInput,
-              ...(contentBlocks[currentBlockIndex] || {})
-            };
-          }
-          // advisor系は content_block_start で既に格納済み
-          break;
+        eventCount++;
 
-        case 'message_delta':
-          if (event.usage) {
-            usageData = { ...usageData, ...event.usage };
-          }
-          break;
+        switch (event.type) {
+          case 'message_start':
+            messageData = event.message || {};
+            usageData = messageData.usage || {};
+            console.log('📡 SSE: message_start 受信');
+            break;
+
+          case 'content_block_start':
+            currentBlockIndex = event.index ?? contentBlocks.length;
+            currentBlockType = event.content_block?.type || 'text';
+            currentText = event.content_block?.text || '';
+            currentJsonDelta = '';
+            console.log(`📡 SSE: content_block_start [${currentBlockIndex}] type=${currentBlockType}`);
+            // advisor_tool_result / server_tool_use は完全データが入る
+            if (currentBlockType !== 'text') {
+              contentBlocks[currentBlockIndex] = { ...event.content_block };
+            }
+            break;
+
+          case 'content_block_delta':
+            if (event.delta?.type === 'text_delta') {
+              currentText += event.delta.text || '';
+            } else if (event.delta?.type === 'input_json_delta') {
+              currentJsonDelta += event.delta.partial_json || '';
+            }
+            break;
+
+          case 'content_block_stop':
+            if (currentBlockType === 'text') {
+              contentBlocks[currentBlockIndex] = { type: 'text', text: currentText };
+              console.log(`📡 SSE: content_block_stop [${currentBlockIndex}] text=${currentText.length}文字`);
+            } else if (currentBlockType === 'tool_use') {
+              let parsedInput = {};
+              try { parsedInput = JSON.parse(currentJsonDelta); } catch { /* */ }
+              contentBlocks[currentBlockIndex] = {
+                ...(contentBlocks[currentBlockIndex] || {}),
+                type: 'tool_use',
+                input: parsedInput,
+              };
+            }
+            break;
+
+          case 'message_delta':
+            if (event.usage) {
+              usageData = { ...usageData, ...event.usage };
+            }
+            break;
+
+          case 'message_stop':
+            console.log(`📡 SSE: message_stop (${eventCount}イベント処理)`);
+            break;
+
+          case 'error':
+            throw new Error(`Claude SSEエラー: ${event.error?.message || JSON.stringify(event)}`);
+        }
       }
     }
+  })();
+
+  // タイムアウト付きでストリーム処理を実行
+  await Promise.race([streamProcess, timeout]);
+
+  // フォールバック: content_block_stop 前にストリームが終了した場合
+  if (currentText && !contentBlocks.some(b => b?.type === 'text' && b.text === currentText)) {
+    console.warn('📡 SSE: 未完了テキストブロックをフォールバック格納');
+    contentBlocks.push({ type: 'text', text: currentText });
+  }
+
+  console.log(`📡 SSE完了: ${eventCount}イベント, ${contentBlocks.filter(Boolean).length}ブロック, ${rawAccumulated.length}バイト受信`);
+
+  // デバッグ: コンテンツが空の場合、受信データの先頭をログ出力
+  if (contentBlocks.filter(Boolean).length === 0) {
+    console.error('📡 SSE: コンテンツブロックが空です。受信データ先頭:', rawAccumulated.substring(0, 500));
   }
 
   // 非ストリーミングレスポンスと同等の形式で返す
