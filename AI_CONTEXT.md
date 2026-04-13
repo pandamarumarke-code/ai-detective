@@ -15,8 +15,8 @@
 | **技術スタック** | Vanilla HTML/CSS/JS (ES Modules) + Claude API + Gemini API + Supabase Realtime |
 | **デプロイ先** | Vercel（GitHub連携自動デプロイ）+ Supabase（マルチプレイ） |
 | **ローカル起動** | `npx http-server ./ai-detective -p 3456 --cors -c-1` + `node proxy.cjs` |
-| **現在のバージョン** | v6.0 |
-| **ステータス** | 開発中（ソロ+マルチプレイ対応済み、3幕構成導入済み） |
+| **現在のバージョン** | v7.0 |
+| **ステータス** | 開発中（ソロ+マルチプレイ対応済み、3幕構成+暗転シーン導入済み） |
 
 ---
 

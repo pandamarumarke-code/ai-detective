@@ -498,6 +498,34 @@ function validateStructure(scenario, difficultyId) {
     }
   }
 
+  // SV-11: 暗転シーン（culprit_flashbacks）のネタバレ防止チェック
+  // 犯人名が独白に含まれている場合は自動修正で「私」に置換
+  const culpritName = scenario.solution?.culprit;
+  if (culpritName && scenario.culprit_flashbacks) {
+    // 全容疑者名を取得（犯人以外の名前も独白に不適切な場合がある）
+    const allSuspectNames = (scenario.suspects || []).map(s => s.name);
+
+    scenario.culprit_flashbacks.forEach((fb, i) => {
+      // 犯人名チェック（最重要）
+      if (fb.monologue && fb.monologue.includes(culpritName)) {
+        fb.monologue = fb.monologue.replaceAll(culpritName, '私');
+        console.warn(`🔧 SV-11自動修正: 暗転${i + 1}の独白から犯人名「${culpritName}」を除去`);
+      }
+      // 他の容疑者名チェック（独白で他キャラ名を出すと犯人が絞れてしまう）
+      allSuspectNames.forEach(name => {
+        if (fb.monologue && fb.monologue.includes(name)) {
+          fb.monologue = fb.monologue.replaceAll(name, 'あの人');
+          console.warn(`🔧 SV-11自動修正: 暗転${i + 1}の独白から容疑者名「${name}」を除去`);
+        }
+      });
+    });
+
+    // フラッシュバック数チェック（2つ未満の場合は警告のみ）
+    if (scenario.culprit_flashbacks.length < 2) {
+      console.warn(`⚠️ SV-11: culprit_flashbacksが${scenario.culprit_flashbacks.length}個（期待: 2個）`);
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 

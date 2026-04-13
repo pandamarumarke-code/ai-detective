@@ -198,7 +198,21 @@ export function renderBlackoutScene(flashbackIndex, onContinue) {
   }
 
   const fb = flashbacks[flashbackIndex];
-  $('#blackout-monologue').textContent = fb.monologue;
+
+  // ネタバレ防止フィルタ（最終防壁）: 犯人名・容疑者名を伏字化
+  let text = fb.monologue;
+  const culpritName = store.state.scenario.solution?.culprit
+    || store.state.scenario.suspects?.find(s => s.is_culprit)?.name;
+  if (culpritName && text.includes(culpritName)) {
+    text = text.replaceAll(culpritName, '■■■');
+  }
+  // 他の容疑者名も独白からは除去（犯人特定の手がかりになるため）
+  (store.state.scenario.suspects || []).forEach(s => {
+    if (s.name && text.includes(s.name)) {
+      text = text.replaceAll(s.name, '■■■');
+    }
+  });
+  $('#blackout-monologue').textContent = text;
 
   // 「調査を続ける」ボタンのイベントリスナー
   const btn = $('#btn-continue-after-blackout');
