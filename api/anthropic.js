@@ -5,11 +5,12 @@
 // @depends   なし（Web標準APIのみ）
 // @consumers js/claude.js (ブラウザから /api/anthropic にPOST)
 // @constraints
-//   - Edge Function: Vercel Hobbyプランでもタイムアウトしない（ストリーミング中は接続維持）
+//   - Edge Function + ストリーミング: Vercel Hobbyの30秒制限を回避
+//   - リクエストに stream:true を強制注入
+//   - Claude SSEイベントをそのままクライアントに転送
 //   - BYOKモード: クライアントのAPIキーをそのまま転送
 //   - 無料モード: x-api-keyなし → 環境変数 ANTHROPIC_API_KEY を使用
-//   - レスポンスをストリーミング転送（Claude API → ブラウザ）
-// @dataflow  ブラウザ → /api/anthropic → https://api.anthropic.com/v1/messages → ブラウザ
+// @dataflow  ブラウザ → /api/anthropic → Claude API (SSE) → ブラウザ
 // @updated   2026-04-14
 // ================================================
 
@@ -18,14 +19,12 @@ export const config = {
 };
 
 export default async function handler(req) {
-  // CORS ヘッダー
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version, anthropic-beta, x-free-mode',
   };
 
-  // プリフライト
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -38,7 +37,6 @@ export default async function handler(req) {
   }
 
   try {
-    // APIキー決定: クライアント提供 or サーバー環境変数（無料モード）
     let apiKey = req.headers.get('x-api-key');
     const isFreeMode = !apiKey || req.headers.get('x-free-mode') === 'true';
 
@@ -52,14 +50,12 @@ export default async function handler(req) {
       }
     }
 
-    // Anthropic APIにリクエスト転送
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': req.headers.get('anthropic-version') || '2023-06-01',
     };
 
-    // Advisor Tool等のbetaヘッダーがあれば転送
     const betaHeader = req.headers.get('anthropic-beta');
     if (betaHeader) {
       headers['anthropic-beta'] = betaHeader;
@@ -67,18 +63,32 @@ export default async function handler(req) {
 
     const body = await req.json();
 
+    // ストリーミングを強制有効化（Vercelタイムアウト回避）
+    body.stream = true;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
     });
 
-    // レスポンスをそのままストリーミング転送
+    if (!response.ok) {
+      // エラーレスポンスはそのまま返す
+      const errText = await response.text();
+      return new Response(errText, {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // SSEストリームをそのままクライアントに転送
     return new Response(response.body, {
-      status: response.status,
+      status: 200,
       headers: {
         ...corsHeaders,
-        'Content-Type': response.headers.get('Content-Type') || 'application/json',
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     });
 

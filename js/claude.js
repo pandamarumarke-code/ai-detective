@@ -113,7 +113,9 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
     throw new Error(`Claude API Error (${response.status}): ${errMsg}`);
   }
 
-  const data = await response.json();
+  // SSEストリームを解析してレスポンスを組み立てる
+  // プロキシが stream:true を注入するため、レスポンスはSSE形式
+  const data = await parseSSEStream(response);
 
   // Advisor Tool使用時: content配列に複数ブロック型がある
   // - type: "text" → テキスト出力（これを使う）
@@ -151,6 +153,99 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   } catch (e) {
     throw new Error(`JSONパースエラー: ${e.message}\n\nレスポンス冒頭: ${text.substring(0, 300)}`);
   }
+}
+
+/**
+ * SSEストリームを解析して、非ストリーミングの Messages API レスポンスと
+ * 同等のオブジェクトを組み立てる
+ */
+async function parseSSEStream(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  // 組み立て用の変数
+  const contentBlocks = [];   // 完成した content block
+  let currentBlockIndex = -1;
+  let currentBlockType = '';
+  let currentText = '';       // text ブロック用
+  let currentJsonDelta = '';  // tool_use ブロック用
+  let messageData = {};       // message_start のデータ
+  let usageData = {};         // 最終 usage
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSEイベントを1行ずつ処理
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || ''; // 最後の不完全な行を保持
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === '[DONE]') continue;
+
+      let event;
+      try { event = JSON.parse(jsonStr); } catch { continue; }
+
+      switch (event.type) {
+        case 'message_start':
+          messageData = event.message || {};
+          usageData = messageData.usage || {};
+          break;
+
+        case 'content_block_start':
+          currentBlockIndex = event.index ?? contentBlocks.length;
+          currentBlockType = event.content_block?.type || 'text';
+          currentText = event.content_block?.text || '';
+          currentJsonDelta = '';
+          // advisor_tool_result は content_block_start に完全データが入る
+          if (currentBlockType === 'advisor_tool_result' || currentBlockType === 'server_tool_use') {
+            contentBlocks[currentBlockIndex] = { ...event.content_block };
+          }
+          break;
+
+        case 'content_block_delta':
+          if (event.delta?.type === 'text_delta') {
+            currentText += event.delta.text || '';
+          } else if (event.delta?.type === 'input_json_delta') {
+            currentJsonDelta += event.delta.partial_json || '';
+          }
+          break;
+
+        case 'content_block_stop':
+          if (currentBlockType === 'text') {
+            contentBlocks[currentBlockIndex] = { type: 'text', text: currentText };
+          } else if (currentBlockType === 'tool_use') {
+            let parsedInput = {};
+            try { parsedInput = JSON.parse(currentJsonDelta); } catch { /* */ }
+            contentBlocks[currentBlockIndex] = {
+              type: 'tool_use',
+              input: parsedInput,
+              ...(contentBlocks[currentBlockIndex] || {})
+            };
+          }
+          // advisor系は content_block_start で既に格納済み
+          break;
+
+        case 'message_delta':
+          if (event.usage) {
+            usageData = { ...usageData, ...event.usage };
+          }
+          break;
+      }
+    }
+  }
+
+  // 非ストリーミングレスポンスと同等の形式で返す
+  return {
+    ...messageData,
+    content: contentBlocks.filter(Boolean),
+    usage: usageData
+  };
 }
 
 // ================================================
