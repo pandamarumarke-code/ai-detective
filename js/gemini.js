@@ -39,10 +39,10 @@ async function callGeminiImage(apiKey, modelId, prompt, aspectRatio = '1:1') {
   const model = GEMINI_MODELS[modelId] || GEMINI_MODELS.flash;
 
   // ローカル: /proxy/gemini/{model}:generateContent?key=xxx
-  // Vercel:  /api/gemini?model={model}:generateContent&key=xxx
+  // Vercel:  /api/gemini?model={model}&key=xxx （サーバー側で:generateContentを付与）
   const fetchUrl = isLocal
     ? `${GEMINI_API_URL}/${model.id}:generateContent?key=${apiKey}`
-    : `${GEMINI_API_URL}?model=${model.id}:generateContent&key=${apiKey}`;
+    : `${GEMINI_API_URL}?model=${model.id}&key=${apiKey}`;
 
   const response = await fetch(
     fetchUrl,
