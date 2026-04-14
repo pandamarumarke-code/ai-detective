@@ -307,6 +307,14 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
+    // JSON途中切断の検出: "Unterminated string" or "Unexpected end" → 自動継続を試行
+    if (e.message.includes('Unterminated') || e.message.includes('Unexpected end')) {
+      console.warn('⚠️ JSON途中切断を検出、自動継続を試行...');
+      throw Object.assign(
+        new Error(`JSONが途中で切断されました（トークン上限到達の可能性）。リトライします。`),
+        { _retryable: true, _truncatedJson: jsonStr }
+      );
+    }
     throw new Error(`JSONパースエラー: ${e.message}\n\nレスポンス冒頭: ${text.substring(0, 300)}`);
   }
 }
@@ -374,7 +382,7 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       useAdvisor: advisorEnabled,
       advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
       temperature: 0.9 + (attempt * 0.05),
-      maxTokens: 4096,
+      maxTokens: 8192,
       timeoutSec: TIMEOUTS.scenarioGeneration
     });
     onProgress(1, 'done');
