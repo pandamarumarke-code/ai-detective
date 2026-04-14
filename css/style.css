@@ -67,6 +67,10 @@
   --duration-fast: 150ms;
   --duration-normal: 300ms;
   --duration-slow: 500ms;
+
+  /* フェーズ別背景色（JSから動的に変更） */
+  --phase-hue: 220;
+  --phase-saturation: 30%;
 }
 
 /* ---------- Reset & Base ---------- */
@@ -83,11 +87,12 @@ html {
 
 body {
   font-family: var(--font-body);
-  background: var(--bg-deep);
+  background: hsl(var(--phase-hue), var(--phase-saturation), 5%);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.7;
+  transition: background 1.5s ease;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -3190,3 +3195,18 @@ body:has(#debug-panel) .title-bg {
   }
 }
 
+/* ================================================
+   タイプライター演出
+   ================================================ */
+
+.typewriter-active::after {
+  content: '│';
+  color: var(--gold-400);
+  animation: blink-cursor 0.7s step-end infinite;
+  font-weight: 300;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

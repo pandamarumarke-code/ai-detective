@@ -24,6 +24,83 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 // ================================================
+// タイプライター演出
+// ================================================
+
+let _typewriterAbort = null; // 現在実行中のタイプライターを中断するためのフラグ
+
+/**
+ * タイプライター演出でテキストを表1文字ずつ表示
+ * @param {HTMLElement} el - 表示先要素
+ * @param {string} text - 表示するテキスト
+ * @param {number} speed - 1文字あたりのms (default: 25)
+ * @returns {Promise<void>} 完了時にresolve
+ */
+function typewriterEffect(el, text, speed = 25) {
+  // 前のタイプライターが実行中なら中断
+  if (_typewriterAbort) _typewriterAbort.abort = true;
+  
+  const ctrl = { abort: false };
+  _typewriterAbort = ctrl;
+  
+  el.textContent = '';
+  el.classList.add('typewriter-active');
+  
+  return new Promise((resolve) => {
+    let i = 0;
+    function tick() {
+      if (ctrl.abort) {
+        // スキップ: 残りを一括表示
+        el.textContent = text;
+        el.classList.remove('typewriter-active');
+        resolve();
+        return;
+      }
+      if (i < text.length) {
+        el.textContent += text[i];
+        i++;
+        // 句読点・改行で一拍置く
+        const pause = (text[i - 1] === '。' || text[i - 1] === '\n') ? speed * 8 : speed;
+        setTimeout(tick, pause);
+      } else {
+        el.classList.remove('typewriter-active');
+        _typewriterAbort = null;
+        resolve();
+      }
+    }
+    tick();
+  });
+}
+
+/** タイプライターを即座にスキップ（残りテキストを一括表示） */
+export function skipTypewriter() {
+  if (_typewriterAbort) _typewriterAbort.abort = true;
+}
+
+// ================================================
+// フェーズ別背景色変化
+// ================================================
+
+const PHASE_THEMES = [
+  { hue: 220, saturation: 30, label: '導入' },        // ダークブルー（深夜の静寂）
+  { hue: 240, saturation: 15, label: '第1調査' },     // ダークグレー（曇天）
+  { hue: 350, saturation: 20, label: '第2調査' },     // 暗い赤み（緊張の高まり）
+  { hue: 40,  saturation: 25, label: '第3調査' },     // 黄金のハイライト（真実への接近）
+  { hue: 30,  saturation: 35, label: '推理提出' },    // 純金（決断の瞬間）
+];
+
+/**
+ * フェーズに応じた背景色を動的に切り替え
+ * @param {number} phaseIndex - 0=導入, 1-3=調査, 4=推理
+ */
+function setPhaseTheme(phaseIndex) {
+  const theme = PHASE_THEMES[Math.min(phaseIndex, PHASE_THEMES.length - 1)];
+  const root = document.documentElement;
+  root.style.setProperty('--phase-hue', theme.hue);
+  root.style.setProperty('--phase-saturation', `${theme.saturation}%`);
+}
+
+// ================================================
 // 画面遷移
 // ================================================
 
@@ -279,6 +356,7 @@ export function renderIntro() {
   $('#case-number').textContent = `#${String(store.state.caseCounter).padStart(3, '0')}`;
   $('#case-title').textContent = s.title || '不明な事件';
   updateProgress(0);
+  setPhaseTheme(0); // 導入: ダークブルー
 
   // 場面設定画像（画像があれば導入テキストの前に挿入）
   const sceneBase64 = store.state.imageCache?.scene;
@@ -288,7 +366,10 @@ export function renderIntro() {
       `<div class="scene-image"><img src="data:image/png;base64,${sceneBase64}" alt="事件の舞台" /></div>`);
   }
 
-  introEl.textContent = s.introduction || '';
+  // タイプライター演出で導入文を表示
+  const introText = s.introduction || '';
+  typewriterEffect(introEl, introText, 20);
+
   if (s.victim) {
     $('#victim-info').innerHTML = `
       <p><strong>${escapeHTML(s.victim.name)}</strong>（${s.victim.age}歳） — ${escapeHTML(s.victim.role)}</p>
@@ -333,13 +414,19 @@ export function renderBlackoutScene(flashbackIndex, onContinue) {
       text = text.replaceAll(s.name, '■■■');
     }
   });
-  $('#blackout-monologue').textContent = text;
+
+  // タイプライター演出で犯人の独白を表示
+  const monoEl = $('#blackout-monologue');
+  typewriterEffect(monoEl, text, 40); // 暗転シーンはゆっくりめ
 
   // 「調査を続ける」ボタンのイベントリスナー
   const btn = $('#btn-continue-after-blackout');
   const newBtn = btn.cloneNode(true);
   btn.parentNode.replaceChild(newBtn, btn);
-  newBtn.addEventListener('click', onContinue);
+  newBtn.addEventListener('click', () => {
+    skipTypewriter();
+    onContinue();
+  });
 
   showGamePanel('blackout');
 }
@@ -358,15 +445,23 @@ export function renderPhaseNarrative(phaseIndex, onContinue) {
     return;
   }
 
+  // フェーズ別背景色変化
+  setPhaseTheme(phaseIndex + 1);
+
   // タイトルとテキストを設定
   $('#narrative-title').textContent = phase.phase_title || `第${phaseIndex + 1}幕`;
-  $('#narrative-text').textContent = phase.phase_narrative;
+  // タイプライター演出で物語展開を表示
+  const narEl = $('#narrative-text');
+  typewriterEffect(narEl, phase.phase_narrative, 25);
 
   // 「調査を開始する」ボタンのイベントリスナーを設定
   const btn = $('#btn-continue-investigation');
   const newBtn = btn.cloneNode(true);
   btn.parentNode.replaceChild(newBtn, btn);
-  newBtn.addEventListener('click', onContinue);
+  newBtn.addEventListener('click', () => {
+    skipTypewriter();
+    onContinue();
+  });
 
   showGamePanel('narrative');
 }
