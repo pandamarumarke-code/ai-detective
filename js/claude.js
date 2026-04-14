@@ -389,6 +389,81 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
  *   step: 1-6, status: 'active'|'done'|'error'|'retry'
  * @returns {Promise<Object>} 検証済みシナリオ
  */
+
+// ================================================
+// シナリオ修正パス（repairScenario）
+// 200秒のフル再生成ではなく、既存シナリオを直接パッチ修正する軽量版
+// ================================================
+
+/**
+ * 検証で落ちたシナリオを直接修正する（フル再生成の代替）
+ * 既存のシナリオJSONをそのまま渡し、検証フィードバックに基づいて
+ * 問題箇所だけを修正した改善版JSONを返す。
+ *
+ * @param {Object} params
+ * @param {string} params.apiKey
+ * @param {string} params.modelId
+ * @param {Object} params.previousScenario - 修正対象のシナリオJSON
+ * @param {string} params.validationFeedback - 検証フィードバック文字列
+ * @param {boolean} params.advisorEnabled
+ * @param {number} params.timeoutSec
+ * @returns {Promise<Object>} 修正済みシナリオJSON
+ */
+async function repairScenario({ apiKey, modelId, previousScenario, validationFeedback, advisorEnabled = false, timeoutSec = 120 }) {
+  console.log('🔧 repairScenario: シナリオ修正パス開始');
+
+  // 既存シナリオから安全にJSONを抽出（トークン節約のため出力に関係ない内部プロパティを除去）
+  const cleanScenario = { ...previousScenario };
+  delete cleanScenario._logicValidation;
+  delete cleanScenario._japaneseQuality;
+  delete cleanScenario._solvabilityCheck;
+  const scenarioJson = JSON.stringify(cleanScenario, null, 0); // 圧縮JSON
+
+  const repairSystemPrompt = `あなたはミステリーシナリオの品質改善エキスパートです。
+与えられた既存シナリオの問題点を修正し、改善版を出力してください。
+
+## 修正ルール
+1. 元のシナリオの世界観・キャラクター・基本ストーリーは可能な限り維持する
+2. 検証フィードバックで指摘された問題を確実に修正する
+3. 特に「手がかりから犯人を論理的に特定できること」を最優先で保証する
+4. 必要に応じて手がかりカード（clues）の内容を追加・修正する
+5. importance=critical のカードには必ず犯人特定の決定的情報を含める
+6. 全テキストは日本語で記述する
+7. JSONスキーマの構造は一切変更しない（フィールド追加・削除禁止）`;
+
+  const repairUserMessage = `以下のシナリオには品質検証で問題が見つかりました。フィードバックに基づいて修正版を出力してください。
+
+## 検証フィードバック
+${validationFeedback}
+
+## 修正対象シナリオ（JSON）
+${scenarioJson}
+
+上記のフィードバックで指摘されたすべての問題を修正し、完全なシナリオJSONを出力してください。
+特に以下の点を重点的に確認・修正してください：
+- 手がかりカードの情報だけで犯人を論理的に特定できるか
+- アリバイ・タイムライン・動機の整合性
+- importance=critical カードに決定的証拠が含まれているか`;
+
+  const repairedScenario = await callClaude({
+    apiKey,
+    modelId,
+    system: repairSystemPrompt,
+    userMessage: repairUserMessage,
+    schema: SCENARIO_SCHEMA,
+    useAdvisor: advisorEnabled,
+    temperature: 0.3, // 修正は安定出力（創造性よりも正確性）
+    maxTokens: 8192,
+    timeoutSec
+  });
+
+  console.log('✅ repairScenario: シナリオ修正完了 -', repairedScenario.title);
+  return repairedScenario;
+}
+
+/**
+ * ミステリーシナリオを生成・検証する（5パスパイプライン + リトライ + シナリオ修正）
+ */
 export async function generateScenario({ apiKey, modelId, theme, difficulty, advisorEnabled = false, usedNames = [], dna = null, onProgress }) {
   const { maxRetries } = VALIDATION_THRESHOLDS;
   let attempt = 0;
@@ -431,57 +506,66 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
   // ブラッシュアップモード: 前回のシナリオ + 検証フィードバックを元に修正版を生成
   const brushUpMode = !!(previousScenario && validationFeedback);
   if (brushUpMode) {
-    console.log('🔧 ブラッシュアップモード: 前回の検証フィードバックを元にシナリオを改善');
+    console.log('🔧 ブラッシュアップモード: 前回の検証フィードバックを元にシナリオを修正');
   }
 
-  // ---- Step 1: シナリオ生成 (Pass 1) ----
+  // ---- Step 1: シナリオ生成 / 修正 (Pass 1) ----
   onProgress(1, 'active');
   let scenario;
 
-  // ブラッシュアップモード: 前回シナリオ + 検証フィードバックを渡して修正版を生成
-  const brushUpPrompt = brushUpMode ? `
+  if (brushUpMode) {
+    // ★ シナリオ修正モード: 既存シナリオを直接パッチ修正（軽量・高速）
+    console.log('⚡ シナリオ修正モード: 既存シナリオをパッチ修正します');
+    try {
+      scenario = await repairScenario({
+        apiKey,
+        modelId,
+        previousScenario,
+        validationFeedback,
+        advisorEnabled: false, // 修正パスはAdvisor不要（高速化）
+        timeoutSec: TIMEOUTS.validation // 修正は120秒で十分
+      });
+    } catch (e) {
+      console.warn('⚠️ シナリオ修正失敗。フル再生成にフォールバック:', e.message);
+      scenario = null; // フル再生成にフォールバック
+    }
+  }
 
-【修正指示】以下の前回シナリオには品質検証で問題が見つかりました。このフィードバックを元に、シナリオをブラッシュアップしてください。
-
-「前回のシナリオタイトル」: ${previousScenario.title || ''}
-
-「検証フィードバック」:
-${validationFeedback}
-
-上記の指摘事項をすべて修正し、論理的整合性を確保した改善版を生成してください。特に「手がかりから犯人を論理的に特定できること」を最優先で保証してください。` : '';
-
-  try {
-    scenario = await callClaude({
-      apiKey,
-      modelId,
-      system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
-      userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : '') + brushUpPrompt,
-      schema: SCENARIO_SCHEMA,
-      useAdvisor: advisorEnabled,
-      advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
-      temperature: brushUpMode ? 0.7 : (0.9 + (attempt * 0.05)),
-      maxTokens: 8192,
-      timeoutSec: TIMEOUTS.scenarioGeneration
-    });
-  } catch (e) {
-    // Advisor使用時にテキストブロック空エラー → Advisorなしで自動リトライ
-    if (e._advisorFailed && advisorEnabled) {
-      console.warn('⚠️ Advisor使用時にエラー発生。Advisorなしでリトライします:', e.message);
-      onProgress(1, 'active');
+  // 修正失敗 or 通常モード: フル生成
+  if (!scenario) {
+    try {
       scenario = await callClaude({
         apiKey,
         modelId,
         system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
-        userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。',
+        userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : ''),
         schema: SCENARIO_SCHEMA,
-        useAdvisor: false,
+        useAdvisor: advisorEnabled,
+        advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
         temperature: 0.9 + (attempt * 0.05),
         maxTokens: 8192,
         timeoutSec: TIMEOUTS.scenarioGeneration
       });
-    } else {
-      onProgress(1, 'error');
-      throw e;
+    } catch (e) {
+      // Advisor使用時にテキストブロック空エラー → Advisorなしで自動リトライ
+      if (e._advisorFailed && advisorEnabled) {
+        console.warn('⚠️ Advisor使用時にエラー発生。Advisorなしでリトライします:', e.message);
+        onProgress(1, 'active');
+        scenario = await callClaude({
+          apiKey,
+          modelId,
+          system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
+          userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。',
+          schema: SCENARIO_SCHEMA,
+          useAdvisor: false,
+          temperature: 0.9 + (attempt * 0.05),
+          maxTokens: 8192,
+          timeoutSec: TIMEOUTS.scenarioGeneration
+        });
+      } else {
+        onProgress(1, 'error');
+        throw e;
+      }
     }
   }
   onProgress(1, 'done');
