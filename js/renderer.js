@@ -251,6 +251,18 @@ export function showGenRetry(message) {
 export function showGenError(message) {
   $('#gen-error').style.display = 'block';
   $('#gen-error-text').textContent = message;
+  // 「デバッグモードで試す」ボタンを追加（APIエラー時のフォールバック）
+  const debugBtnArea = $('#gen-error-debug');
+  if (debugBtnArea) {
+    debugBtnArea.innerHTML = `
+      <button class="btn btn-ghost" id="btn-try-debug" style="margin-top:12px;font-size:0.85rem;opacity:0.8;">
+        🔧 モックデータでお試しプレイ（API不要）
+      </button>
+    `;
+    debugBtnArea.querySelector('#btn-try-debug')?.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('debug:fallbackGenerate'));
+    });
+  }
 }
 
 // ================================================

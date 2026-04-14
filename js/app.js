@@ -885,6 +885,13 @@ function init() {
     store.update({ result: mockResult, playerAnswers: { culprit: s.solution.culprit, motive: 'デバッグ', method: 'デバッグ' } });
     R.renderResult();
   });
+  // エラー発生時のフォールバック: デバッグモードに切り替えてモック生成
+  document.addEventListener('debug:fallbackGenerate', () => {
+    debugLog('ui', 'フォールバック: デバッグモードでモック生成');
+    // セッション内でデバッグモードを有効化（_sessionDebugをON）
+    window.__debugDetective = true;
+    startGeneration();
+  });
 
   // 設定モーダルの初期値を反映
   const { apiKey, modelId, geminiApiKey, imageModelId, imageEnabled, advisorEnabled } = store.state;
