@@ -596,81 +596,131 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
   }
 
   // ════════════════════════════════════════════════════════════
-  // 🚀 v7.10 ラテラルシンキング最適化:
-  // Pass 3/4/5 をバックグラウンド化（ゲーム開始をブロックしない）
+  // 🔧 v7.11 インライン・マイクロ修正方式:
+  // Pass 3（論理検証）はブロッキング維持 → 失敗時はその場で修正して続行
+  // Pass 4/5（日本語・自動修正）はバックグラウンド化（品質改善のみ）
   // ────────────────────────────────────────────────────────────
-  // 従来: Pass 1(200s) → Pass 2(0s) → Pass 3(190s) → Pass 4(95s) → Pass 5(90s) = ~400s
-  // 新方式: Pass 1(200s) → Pass 2(0s) → 即return → Pass 3/4/5 はバックグラウンド
-  // 結果: ユーザー待ち時間 = ~200s（半減）
+  // フロー: Pass 1(200s) → Pass 2(0s) → Pass 3(30-60s)
+  //   → [合格] そのまま続行
+  //   → [不合格] マイクロ修正(30-60s) → ローカル再検証(0s) → 続行
   // ════════════════════════════════════════════════════════════
 
-  // 検証用モデル: Advisorは使わない（高速化 + エラー回避）
-  const validationUseAdvisor = false;
+  // ---- Step 3: AI論理検証 (Pass 3) — ブロッキング ----
+  onProgress(3, 'active');
+  let logicResult = null;
+  const validationUseAdvisor = false; // Advisor不使用（高速化 + エラー回避）
 
-  // Pass 3/4/5 をバックグラウンドで fire-and-forget 実行
-  // 結果は scenario オブジェクトに後から書き込まれる（品質トラッキング用）
-  const backgroundValidation = (async () => {
+  try {
+    logicResult = await callClaude({
+      apiKey, modelId,
+      system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。',
+      userMessage: buildDeepValidationPrompt(scenario),
+      schema: DEEP_VALIDATION_SCHEMA,
+      useAdvisor: validationUseAdvisor,
+      temperature: 0.1, maxTokens: 4096,
+      timeoutSec: TIMEOUTS.validation
+    });
+    scenario._logicValidation = logicResult;
+    onProgress(3, 'done');
+  } catch (e) {
+    console.warn('AI論理検証エラー（スキップして続行）:', e.message);
+    logicResult = { is_valid: true, is_solvable: true, overall_score: 70, reasoning_chain: '(検証スキップ)', critical_issues: [], suggestions: [] };
+    scenario._logicValidation = logicResult;
+    onProgress(3, 'done');
+  }
+
+  // ---- Pass 3 結果処理: 不合格ならインライン・マイクロ修正 ----
+  const needsRepair = logicResult && (!logicResult.is_solvable || logicResult.overall_score < VALIDATION_THRESHOLDS.logicPassScore);
+
+  if (needsRepair) {
+    console.log(`⚠️ 論理検証不合格 (is_solvable=${logicResult.is_solvable}, score=${logicResult.overall_score})`);
+    console.log('🔧 インライン・マイクロ修正を開始...');
+    onProgress(3, 'active'); // ステップ3を「修正中」に戻す
+
+    // 検証フィードバックを構築
+    const feedback = [
+      `論理スコア: ${logicResult.overall_score}/100 (基準: ${VALIDATION_THRESHOLDS.logicPassScore})`,
+      `解決可能性: ${logicResult.is_solvable ? '可' : '不可'}`,
+      `推理チェーン: ${logicResult.reasoning_chain || '(なし)'}`,
+      `アリバイ: ${logicResult.alibi_check || '(なし)'}`,
+      `タイムライン: ${logicResult.timeline_check || '(なし)'}`,
+      `証拠整合性: ${logicResult.evidence_match || '(なし)'}`,
+      `重大な問題: ${(logicResult.critical_issues || []).join(', ') || '(なし)'}`,
+      `改善提案: ${(logicResult.suggestions || []).join(', ') || '(なし)'}`
+    ].join('\n');
+
     try {
-      // ---- Pass 3 & 4: 並列実行（バックグラウンド） ----
-      onProgress(3, 'active');
-      onProgress(4, 'active');
+      // マイクロ修正: repairScenarioで問題箇所だけ修正（30-60秒）
+      const repairedScenario = await repairScenario({
+        apiKey, modelId,
+        previousScenario: scenario,
+        validationFeedback: feedback,
+        advisorEnabled: false,
+        timeoutSec: TIMEOUTS.validation
+      });
 
-      const [logicOutcome, jpOutcome] = await Promise.all([
-        // Pass 3: AI論理検証
-        callClaude({
-          apiKey, modelId,
-          system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。',
-          userMessage: buildDeepValidationPrompt(scenario),
-          schema: DEEP_VALIDATION_SCHEMA,
-          useAdvisor: validationUseAdvisor,
-          temperature: 0.1, maxTokens: 4096,
-          timeoutSec: TIMEOUTS.validation
-        }).then(r => { scenario._logicValidation = r; onProgress(3, 'done'); return r; })
-          .catch(e => { console.warn('AI論理検証エラー:', e.message); onProgress(3, 'done'); return null; }),
-
-        // Pass 4: AI日本語品質検証
-        callClaude({
-          apiKey, modelId,
-          system: 'あなたは日本語校正の専門家です。ミステリーシナリオのテキスト品質を厳密に評価してください。',
-          userMessage: buildJapaneseQualityPrompt(scenario, theme),
-          schema: JAPANESE_QUALITY_SCHEMA,
-          useAdvisor: validationUseAdvisor,
-          temperature: 0.1, maxTokens: 4096,
-          timeoutSec: TIMEOUTS.validation
-        }).then(r => { scenario._japaneseQuality = r; onProgress(4, 'done'); return r; })
-          .catch(e => { console.warn('日本語品質検証エラー:', e.message); onProgress(4, 'done'); return null; })
-      ]);
-
-      // ---- Pass 5: 自動修正 + 解答チェーン（バックグラウンド） ----
-      onProgress(5, 'active');
-      // 日本語修正の適用
-      if (jpOutcome?.corrections?.length > 0 && jpOutcome.overall_score < VALIDATION_THRESHOLDS.japaneseAutoFixScore) {
-        applyCorrections(scenario, jpOutcome.corrections);
+      // ローカル再検証（Pass 2のみ、0秒）
+      const recheck = validateStructure(repairedScenario, difficulty);
+      if (recheck.valid) {
+        // 修正成功 → シナリオを置き換えて続行
+        console.log('✅ マイクロ修正成功 → ローカル再検証OK');
+        scenario = repairedScenario;
+        scenario._logicValidation = logicResult; // 元の検証結果は保持
+        scenario._repaired = true;
+        // チェックポイント更新
+        try { localStorage.setItem('ai_detective_checkpoint', JSON.stringify(scenario)); } catch (e) {}
+      } else {
+        console.warn('⚠️ マイクロ修正後のローカル再検証失敗:', recheck.errors);
+        // 修正版は使わず、元のシナリオで続行（完璧でなくてもプレイ可能）
+        console.log('📋 元のシナリオで続行（検証スキップ）');
       }
-      if (jpOutcome && !jpOutcome.name_consistency) {
+      onProgress(3, 'done');
+    } catch (repairErr) {
+      console.warn('⚠️ マイクロ修正失敗（元のシナリオで続行）:', repairErr.message);
+      onProgress(3, 'done');
+      // 修正失敗でも元のシナリオで続行（プレイ不可能になるよりマシ）
+    }
+  }
+
+  // ---- Step 4/5: 日本語品質 + 自動修正 (バックグラウンド) ----
+  // ゲームプレイに影響しないため、バックグラウンドで実行
+  onProgress(4, 'active');
+  onProgress(5, 'active');
+
+  const bgJpValidation = (async () => {
+    try {
+      const jpResult = await callClaude({
+        apiKey, modelId,
+        system: 'あなたは日本語校正の専門家です。ミステリーシナリオのテキスト品質を厳密に評価してください。',
+        userMessage: buildJapaneseQualityPrompt(scenario, theme),
+        schema: JAPANESE_QUALITY_SCHEMA,
+        useAdvisor: false,
+        temperature: 0.1, maxTokens: 4096,
+        timeoutSec: TIMEOUTS.validation
+      });
+      scenario._japaneseQuality = jpResult;
+      onProgress(4, 'done');
+
+      // 自動修正の適用
+      if (jpResult?.corrections?.length > 0 && jpResult.overall_score < VALIDATION_THRESHOLDS.japaneseAutoFixScore) {
+        applyCorrections(scenario, jpResult.corrections);
+      }
+      if (jpResult && !jpResult.name_consistency) {
         fixNameConsistency(scenario);
       }
       onProgress(5, 'done');
 
-      // 品質スコアを集約
-      scenario._qualityScore = computeOverallQuality(
-        logicOutcome || { overall_score: 70 },
-        jpOutcome || { overall_score: 80 }
-      );
-
-      console.log('✅ バックグラウンド検証完了:', scenario._qualityScore);
-    } catch (bgErr) {
-      console.warn('バックグラウンド検証エラー（ゲームには影響なし）:', bgErr.message);
+      scenario._qualityScore = computeOverallQuality(logicResult || { overall_score: 70 }, jpResult);
+      console.log('✅ バックグラウンド日本語検証完了:', scenario._qualityScore);
+    } catch (e) {
+      console.warn('日本語品質検証スキップ:', e.message);
+      onProgress(4, 'done');
+      onProgress(5, 'done');
     }
   })();
+  scenario._jpValidationPromise = bgJpValidation;
 
-  // バックグラウンド検証のPromiseをシナリオに添付（必要なら後でawait可能）
-  scenario._validationPromise = backgroundValidation;
-
-  // ---- Step 3/4/5: バックグラウンド実行中を表示 ----
-  // UIのステップ表示はバックグラウンドのコールバックで更新される
-
-  // ---- Step 6: 完了（即座に返す） ----
+  // ---- Step 6: 完了 ----
   onProgress(6, 'done');
 
   // DNA情報を保存
