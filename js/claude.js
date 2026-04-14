@@ -595,21 +595,25 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     throw e;
   }
 
-  // ---- Step 3 & 4: AI論理検証 + AI日本語品質検証 (並列実行) ----
+  // ---- Step 3 & 4: AI論理検証 + AI日本語品質検証 (バックグラウンド並列実行) ----
+  // v7.9: ゲーム開始をブロックせず、検証はバックグラウンドで実行
+  // 結果はscenarioオブジェクトに後から書き込まれる
   onProgress(3, 'active');
   onProgress(4, 'active');
 
   let logicResult, jpResult;
 
-  // Pass 3: AI論理検証
+  // 検証用モデル: Advisorは使わない（高速化 + エラー回避）
+  const validationUseAdvisor = false;
+
+  // Pass 3: AI論理検証（バックグラウンド）
   const logicPromise = callClaude({
     apiKey,
     modelId,
     system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。合格基準は高く設定してください。',
-    userMessage: buildDeepValidationPrompt(scenario) + (advisorEnabled ? '\n\n【重要】advisorに相談して、解決可能性の証明と論理的矛盾の判定を依頼してください。advisorの判断結果に基づいて、JSONフォーマットで検証結果を構造化してください。' : ''),
+    userMessage: buildDeepValidationPrompt(scenario),
     schema: DEEP_VALIDATION_SCHEMA,
-    useAdvisor: advisorEnabled,
-    advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.logicValidation,
+    useAdvisor: validationUseAdvisor,
     temperature: 0.1,
     maxTokens: 4096,
     timeoutSec: TIMEOUTS.validation
@@ -624,15 +628,14 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     return { success: false, error: e };
   });
 
-  // Pass 4: AI日本語品質検証
+  // Pass 4: AI日本語品質検証（バックグラウンド）
   const jpPromise = callClaude({
     apiKey,
     modelId,
     system: 'あなたは日本語校正の専門家です。ミステリーシナリオのテキスト品質を厳密に評価してください。',
-    userMessage: buildJapaneseQualityPrompt(scenario, theme) + (advisorEnabled ? '\n\n【重要】advisorに相談して、総合的な品質判定とスコアリングを依頼してください。advisorの判断結果に基づいて、修正提案をJSON形式で構造化してください。' : ''),
+    userMessage: buildJapaneseQualityPrompt(scenario, theme),
     schema: JAPANESE_QUALITY_SCHEMA,
-    useAdvisor: advisorEnabled,
-    advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.japaneseQuality,
+    useAdvisor: validationUseAdvisor,
     temperature: 0.1,
     maxTokens: 4096,
     timeoutSec: TIMEOUTS.validation
