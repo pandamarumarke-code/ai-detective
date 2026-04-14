@@ -393,16 +393,22 @@ export async function generateScenario({ apiKey, modelId, theme, difficulty, adv
   const { maxRetries } = VALIDATION_THRESHOLDS;
   let attempt = 0;
   let lastError = null;
+  let previousScenario = null;  // リトライ用: 前回シナリオ
+  let validationFeedback = null; // リトライ用: 検証フィードバック
 
   while (attempt <= maxRetries) {
     try {
-      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt });
+      const scenario = await runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt, previousScenario, validationFeedback });
       return scenario;
     } catch (e) {
       lastError = e;
+      // 検証失敗時: シナリオとフィードバックを保持して次回リトライでブラッシュアップ
+      if (e._failedScenario) previousScenario = e._failedScenario;
+      if (e._validationFeedback) validationFeedback = e._validationFeedback;
       attempt++;
       if (attempt <= maxRetries && e._retryable) {
-        onProgress(0, 'retry', `リトライ ${attempt}/${maxRetries}: ${e.message}`);
+        const mode = previousScenario ? 'ブラッシュアップ' : '再生成';
+        onProgress(0, 'retry', `リトライ ${attempt}/${maxRetries} (${mode}): ${e.message}`);
         continue;
       }
       break;
@@ -416,25 +422,44 @@ export async function generateScenario({ apiKey, modelId, theme, difficulty, adv
  * パイプライン1回分の実行
  * Pass 3/4を並列化、各PassにAbortControllerタイムアウトを適用
  */
-async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt }) {
+async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt, previousScenario = null, validationFeedback = null }) {
   // Advisor使用時のプロンプト追加文
   const advisorHint = advisorEnabled
     ? '\n\n【重要】またadvisorに相談して、戦略的な計画を立ててから実行してください。'
     : '';
 
+  // ブラッシュアップモード: 前回のシナリオ + 検証フィードバックを元に修正版を生成
+  const brushUpMode = !!(previousScenario && validationFeedback);
+  if (brushUpMode) {
+    console.log('🔧 ブラッシュアップモード: 前回の検証フィードバックを元にシナリオを改善');
+  }
+
   // ---- Step 1: シナリオ生成 (Pass 1) ----
   onProgress(1, 'active');
   let scenario;
+
+  // ブラッシュアップモード: 前回シナリオ + 検証フィードバックを渡して修正版を生成
+  const brushUpPrompt = brushUpMode ? `
+
+【修正指示】以下の前回シナリオには品質検証で問題が見つかりました。このフィードバックを元に、シナリオをブラッシュアップしてください。
+
+「前回のシナリオタイトル」: ${previousScenario.title || ''}
+
+「検証フィードバック」:
+${validationFeedback}
+
+上記の指摘事項をすべて修正し、論理的整合性を確保した改善版を生成してください。特に「手がかりから犯人を論理的に特定できること」を最優先で保証してください。` : '';
+
   try {
     scenario = await callClaude({
       apiKey,
       modelId,
       system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
-      userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : ''),
+      userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。' + (advisorEnabled ? '\n\n【重要】またadvisorに相談して、シナリオの骨格（犯人・トリック・動機・レッドヘリング・解決の鍵）の戦略を立ててから、その計画に従ってシナリオを生成してください。' : '') + brushUpPrompt,
       schema: SCENARIO_SCHEMA,
       useAdvisor: advisorEnabled,
       advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
-      temperature: 0.9 + (attempt * 0.05),
+      temperature: brushUpMode ? 0.7 : (0.9 + (attempt * 0.05)),
       maxTokens: 8192,
       timeoutSec: TIMEOUTS.scenarioGeneration
     });
@@ -545,10 +570,17 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
   if (logicOutcome.success) {
     logicResult = logicOutcome.result;
 
-    // 解決可能性チェック — 解けないシナリオは即リトライ
+    // 解決可能性チェック — 解けないシナリオはブラッシュアップリトライ
     if (!logicResult.is_solvable) {
       const err = new Error('手がかりから犯人を論理的に特定できないシナリオです');
       err._retryable = true;
+      err._failedScenario = scenario;
+      err._validationFeedback = [
+        `解決可能性: 不可 (is_solvable=false)`,
+        `推理チェーン: ${logicResult.reasoning_chain || '(なし)'}`,
+        `重大な問題: ${(logicResult.critical_issues || []).join(', ') || '(なし)'}`,
+        `改善提案: ${(logicResult.suggestions || []).join(', ') || '(なし)'}`
+      ].join('\n');
       throw err;
     }
 
@@ -556,6 +588,17 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     if (logicResult.overall_score < VALIDATION_THRESHOLDS.logicPassScore) {
       const err = new Error(`論理品質スコア ${logicResult.overall_score}/100 が基準(${VALIDATION_THRESHOLDS.logicPassScore})未満`);
       err._retryable = true;
+      err._failedScenario = scenario;
+      err._validationFeedback = [
+        `論理スコア: ${logicResult.overall_score}/100 (基準: ${VALIDATION_THRESHOLDS.logicPassScore})`,
+        `アリバイチェック: ${logicResult.alibi_check || '(なし)'}`,
+        `タイムラインチェック: ${logicResult.timeline_check || '(なし)'}`,
+        `レッドヘリングチェック: ${logicResult.red_herring_check || '(なし)'}`,
+        `証拠整合性: ${logicResult.evidence_match || '(なし)'}`,
+        `公平性: ${logicResult.fairness_check || '(なし)'}`,
+        `重大な問題: ${(logicResult.critical_issues || []).join(', ') || '(なし)'}`,
+        `改善提案: ${(logicResult.suggestions || []).join(', ') || '(なし)'}`
+      ].join('\n');
       throw err;
     }
   } else {
