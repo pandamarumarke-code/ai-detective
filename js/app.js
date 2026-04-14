@@ -25,6 +25,7 @@ import { generateSceneImages, generateCardImages } from './gemini.js';
 import { animateCardReveal } from './cards.js';
 import { detectSharedScenario, generateShareURL, shareURL, revealSharedSolution } from './share.js';
 import * as R from './renderer.js';
+import { isDebugMode, initDebugMode, getMockScenario, getMockImage, getMockScoringResult, debugLog } from './debug.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -33,10 +34,36 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // ゲームフロー制御
 // ================================================
 
-/** シナリオ生成を開始（無料モード / BYOKモード自動判定） */
+/** シナリオ生成を開始（デバッグ / 無料 / BYOKモード自動判定） */
 async function startGeneration() {
   const { apiKey, modelId, theme, difficulty } = store.state;
 
+  // ==== デバッグモード: APIを一切呼ばずモックシナリオで即座にゲーム開始 ====
+  if (isDebugMode()) {
+    debugLog('system', 'デバッグモード: モックシナリオで生成開始', { theme, difficulty });
+    R.showScreen('generating');
+    R.resetGenSteps();
+    store.resetGame();
+
+    // 生成ステップを0.2秒ずつアニメーション
+    for (let step = 1; step <= 8; step++) {
+      R.updateGenStep(step, 'active');
+      await new Promise(r => setTimeout(r, 200));
+      R.updateGenStep(step, 'done');
+    }
+
+    const scenario = getMockScenario(theme, difficulty);
+    store.update({ scenario });
+    store.incrementCase();
+
+    setTimeout(() => {
+      R.renderIntro();
+      R.showScreen('game');
+    }, 300);
+    return;
+  }
+
+  // ==== 通常モード ====
   // 無料モード判定: APIキーなし → 無料枠を使う
   const isFreeMode = !apiKey;
 
@@ -814,10 +841,50 @@ function setupEventListeners() {
 // ================================================
 
 function init() {
+  // デバッグモード初期化（URLパラメータ検出 + パネル描画）
+  initDebugMode();
+
   R.initParticles();
   R.renderTitleStats();
   R.renderFreePlayBadge();
   setupEventListeners();
+
+  // ==== デバッグイベントハンドラー ====
+  document.addEventListener('debug:mockGenerate', () => {
+    debugLog('ui', 'モック生成ボタン押下');
+    startGeneration();
+  });
+  document.addEventListener('debug:skipToPhase', () => {
+    const s = store.state.scenario;
+    if (!s) { debugLog('ui', 'シナリオ未生成'); return; }
+    const nextPhase = store.state.currentPhase;
+    if (nextPhase < s.investigation_phases.length) {
+      debugLog('ui', `フェーズ${nextPhase + 1}へスキップ`);
+      startInvestigation(nextPhase);
+    } else {
+      R.renderAnswerPhase();
+    }
+  });
+  document.addEventListener('debug:revealAll', () => {
+    const s = store.state.scenario;
+    if (!s) return;
+    debugLog('ui', '全カード公開');
+    const allCards = s.investigation_phases.flatMap(p => p.cards || []);
+    store.update({ revealedCards: allCards });
+    R.renderRevealedCards();
+    R.renderClueList();
+  });
+  document.addEventListener('debug:skipToResult', () => {
+    const s = store.state.scenario;
+    if (!s) return;
+    debugLog('ui', '結果画面へスキップ');
+    const mockResult = getMockScoringResult(
+      { culprit: s.solution.culprit, motive: 'デバッグ', method: 'デバッグ' },
+      s.solution
+    );
+    store.update({ result: mockResult, playerAnswers: { culprit: s.solution.culprit, motive: 'デバッグ', method: 'デバッグ' } });
+    R.renderResult();
+  });
 
   // 設定モーダルの初期値を反映
   const { apiKey, modelId, geminiApiKey, imageModelId, imageEnabled, advisorEnabled } = store.state;
@@ -854,7 +921,8 @@ function init() {
   // URLハッシュから共有シナリオを検出
   const isShared = checkForSharedScenario();
   if (!isShared) {
-    console.log('🔍 AI探偵団 v6.0 — 初期化完了（MM型進行 + DNA + 解答チェーン + 推理メモ）');
+    const debugInfo = isDebugMode() ? ' [DEBUG MODE]' : '';
+    console.log(`🔍 AI探偵団 v7.1 — 初期化完了${debugInfo}`);
   } else {
     console.log('🔗 AI探偵団 — 共有シナリオを検出');
   }

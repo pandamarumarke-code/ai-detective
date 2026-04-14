@@ -25,7 +25,8 @@ const STORAGE_KEYS = {
   GEMINI_MODEL: 'ai_detective_gemini_model',
   IMAGE_ENABLED: 'ai_detective_image_enabled',
   ADVISOR_ENABLED: 'ai_detective_advisor_enabled',
-  FREE_PLAY: 'ai_detective_free_play'   // {month: 'YYYY-MM', count: N}
+  FREE_PLAY: 'ai_detective_free_play',   // {month: 'YYYY-MM', count: N}
+  DEBUG: 'ai_detective_debug'
 };
 
 const MAX_HISTORY = 50;
@@ -47,6 +48,9 @@ function createInitialState() {
 
     // Advisor戦略（Opus+Sonnet連携、デフォルトON）
     advisorEnabled: localStorage.getItem(STORAGE_KEYS.ADVISOR_ENABLED) !== 'false',
+
+    // デバッグモード
+    debugMode: localStorage.getItem(STORAGE_KEYS.DEBUG) === 'true',
 
     // 無料プレイ管理
     freePlayRemaining: calcFreePlayRemaining(),
@@ -202,6 +206,18 @@ class Store {
   toggleAdvisorEnabled(enabled) {
     this.update({ advisorEnabled: enabled });
     localStorage.setItem(STORAGE_KEYS.ADVISOR_ENABLED, enabled.toString());
+  }
+
+  // ---- デバッグモード管理 ----
+
+  enableDebug() {
+    this.update({ debugMode: true });
+    localStorage.setItem(STORAGE_KEYS.DEBUG, 'true');
+  }
+
+  disableDebug() {
+    this.update({ debugMode: false });
+    localStorage.removeItem(STORAGE_KEYS.DEBUG);
   }
 
   // ---- 画像キャッシュ管理 ----

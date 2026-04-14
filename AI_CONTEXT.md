@@ -15,8 +15,8 @@
 | **技術スタック** | Vanilla HTML/CSS/JS (ES Modules) + Claude API + Gemini API + Supabase Realtime |
 | **デプロイ先** | Vercel（GitHub連携自動デプロイ）+ Supabase（マルチプレイ） |
 | **ローカル起動** | `npx http-server ./ai-detective -p 3456 --cors -c-1` + `node proxy.cjs` |
-| **現在のバージョン** | v7.0 |
-| **ステータス** | 開発中（ソロ+マルチプレイ対応済み、3幕構成+暗転シーン導入済み） |
+| **現在のバージョン** | v7.1 |
+| **ステータス** | 開発中（デバッグモード追加・画像生成エラー修正済み） |
 
 ---
 
@@ -31,10 +31,11 @@
 ├── vercel.json         # Vercel設定
 ├── AI_CONTEXT.md       # このファイル
 ├── css/
-│   └── style.css       # デザインシステム（CSS変数 + 全コンポーネント）
+│   └── style.css       # デザインシステム（CSS変数 + 全コンポーネント + デバッグパネル）
 └── js/
-    ├── constants.js    # SSOT: テーマ/難易度/モデル/プロンプト/バリデーション定数/スキーマ
-    ├── store.js        # SSOT: アプリ全状態 + localStorage永続化
+    ├── constants.js    # SSOT: テーマ/難易度/モデル/プロンプト/バリデーション定数/スキーマ/MOCK_SCENARIO
+    ├── store.js        # SSOT: アプリ全状態 + localStorage永続化 + debugModeフラグ
+    ├── debug.js        # デバッグモード制御（モック生成・ログ・パネルUI）
     ├── claude.js       # Claude API通信 + 5パス検証パイプライン
     ├── gemini.js       # Gemini API通信 + 画像生成バッチ処理
     ├── app.js          # エントリポイント: イベント配線・画面遷移・ゲームフロー
@@ -55,19 +56,21 @@
 - **モジュール方式**: ES Modules (type="module") ※supabase.js/multiplayer.jsはUMD(CDN)
 - **CORSプロキシ**: proxy.cjs (Node.js) → Vercel Serverless Functions (api/*.js)
 - **AI戦略**: Advisor Tool (Opus=アドバイザー, Sonnet=実行者) ON/OFF切替
+- **デバッグモード**: `?debug=true` / localStorage / コンソールの3方式でON（APIコスト$0）
 
-### ゲームフロー（v6.0 マーダーミステリー型3幕構成）
+### デバッグモード
+```
+ON方法: URL ?debug=true / localStorage ai_detective_debug=true / window.__debugDetective=true
+機能:
+  - モックシナリオで即座にゲーム開始（API呼び出しゼロ）
+  - デバッグパネル（フェーズスキップ・全カード公開・結果画面直行）
+  - 構造化ログ（window.__debugLogs でアクセス可能）
+OFF方法: URL ?debug=false / store.disableDebug() / localStorage削除
+```
+
+### ゲームフロー（v7.1）
 ```
 タイトル → 設定選択 → 生成中(8ステップ) → 導入 → 📜第1幕(展開) → 調査① → 📜第2幕(新事実) → 調査② → 📜第3幕(急展開) → 調査③ → 回答 → 結果
-```
-
-### パネルシステム（ゲーム画面内）
-```
-showGamePanel(パネル名) で切替:
-  'intro'           → panel-intro（導入）
-  'narrative'        → panel-narrative（物語展開）
-  'investigation'    → panel-investigation（調査カード選択）
-  'answer'           → panel-answer（最終推理）
 ```
 
 ---
@@ -89,9 +92,10 @@ showGamePanel(パネル名) で切替:
 | テーマ定義 (THEMES) | `js/constants.js` | 6テーマ |
 | 難易度定義 (DIFFICULTIES) | `js/constants.js` | 3難易度 |
 | シナリオDNA (SCENARIO_DNA_OPTIONS) | `js/constants.js` | 動機8/トリック8/ツイスト6 |
+| モックシナリオ (MOCK_SCENARIO) | `js/constants.js` | デバッグ用テストデータ |
 | JSON Schema (SCENARIO_SCHEMA) | `js/constants.js` | Structured Outputs用 |
 | プロンプトテンプレート | `js/constants.js` | buildScenarioSystemPrompt等 |
-| アプリ全状態 | `js/store.js` | apiKey, scenario, currentPhase等 |
+| アプリ全状態 | `js/store.js` | apiKey, scenario, debugMode等 |
 | CSS変数 | `css/style.css` | カラー、フォント、間隔 |
 
 ---
@@ -102,4 +106,4 @@ showGamePanel(パネル名) で切替:
 |------|------|
 | **更新日** | 2026-04-14 |
 | **更新者** | AI (Antigravity) |
-| **変更内容** | CWF Phase 0: v6.0時点に更新。マルチプレイ・3幕構成・シナリオDNA・フェアプレイ検証を反映 |
+| **変更内容** | v7.1: デバッグモード追加、Gemini画像生成エラー修正（responseModalities: ['TEXT','IMAGE']） |

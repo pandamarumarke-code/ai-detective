@@ -54,7 +54,7 @@ async function callGeminiImage(apiKey, modelId, prompt, aspectRatio = '1:1') {
           parts: [{ text: prompt }]
         }],
         generationConfig: {
-          responseModalities: ['IMAGE'],
+          responseModalities: ['TEXT', 'IMAGE'],
           imageConfig: { aspectRatio }
         }
       })

@@ -799,3 +799,135 @@ ${cardsOnly.join('\n')}
 重要: カードに書かれていない情報で推理しないでください。
 推理できない場合は is_solvable: false とし、missing_infoに不足情報を記載してください。`;
 }
+
+// ================================================
+// デバッグ用モックシナリオ（SCENARIO_SCHEMAと完全一致）
+// ================================================
+export const MOCK_SCENARIO = {
+  title: '【デバッグ】消えた宝石の謎',
+  setting: {
+    location: 'デバッグ用洋館',
+    time: '2026年4月14日 午後8時',
+    atmosphere: 'テスト用の穏やかな雰囲気'
+  },
+  introduction: 'デバッグモードのテストシナリオです。高名な宝石コレクター・山田太郎が所有する「月光の涙」と呼ばれるダイヤモンドが、晩餐会の最中に盗まれた。犯行時刻は午後8時から9時の間と推定される。洋館には4人の招待客がおり、全員に動機がある。探偵であるあなたは、手がかりカードを選んで犯人を特定してください。このシナリオはAPIを使用せずにゲームのUIと機能をテストするためのものです。',
+  victim: {
+    name: '山田太郎',
+    age: 65,
+    role: '宝石コレクター',
+    cause_of_death: '宝石の盗難（殺人ではない）'
+  },
+  suspects: [
+    {
+      name: '佐藤花子',
+      age: 32,
+      role: '山田の秘書',
+      relationship: '10年来の秘書',
+      personality: '几帳面で冷静',
+      motive: '給与未払いへの不満',
+      alibi: '「晩餐会の準備をしていました」',
+      is_culprit: true
+    },
+    {
+      name: '鈴木一郎',
+      age: 45,
+      role: '宝石鑑定士',
+      relationship: 'ビジネスパートナー',
+      personality: '社交的だが計算高い',
+      motive: '自分の鑑定が間違いだと暴かれることへの恐怖',
+      alibi: '「書斎で本を読んでいました」',
+      is_culprit: false
+    },
+    {
+      name: '田中美咲',
+      age: 28,
+      role: '山田の姪',
+      relationship: '遺産相続人',
+      personality: '明るいが秘密主義',
+      motive: '遺産を早く手に入れたい',
+      alibi: '「庭で電話をしていました」',
+      is_culprit: false
+    },
+    {
+      name: '高橋健太',
+      age: 50,
+      role: '警備員',
+      relationship: '新任の警備担当',
+      personality: '真面目だが不器用',
+      motive: '宝石の価値を知り誘惑された',
+      alibi: '「巡回していました」',
+      is_culprit: false
+    }
+  ],
+  investigation_phases: [
+    {
+      phase: 1,
+      phase_title: '第1幕 — 現場検証',
+      phase_narrative: '宝石が保管されていた展示ケースのガラスには傷一つなく、鍵も無傷だった。内部犯行の可能性が高い。あなたは現場の手がかりを集めることにした。',
+      total_cards: 4,
+      selectable: 2,
+      cards: [
+        { id: 'c1-1', type: 'evidence', title: '展示ケースの指紋', action_label: '展示ケースを鑑識する', focus_area: 'location_case', focus_label: '🔍 展示ケース', content: '展示ケースからは複数の指紋が検出された。しかし佐藤花子の指紋だけが、ケースの裏側の隠しロック付近に集中していた。他の招待客の指紋は表面のガラスのみ。', importance: 'critical' },
+        { id: 'c1-2', type: 'testimony', title: '高橋の証言', action_label: '警備員に話を聞く', focus_area: 'person_takahashi', focus_label: '👤 高橋', content: '「8時15分頃、佐藤さんが展示室の方へ歩いていくのを見ました。手には何か光るものを持っていたような気がします。ただ、巡回で忙しかったので確認はしていません」', importance: 'high' },
+        { id: 'c1-3', type: 'circumstance', title: '監視カメラの映像', action_label: '監視カメラを確認する', focus_area: 'forensics', focus_label: '🔬 鑑識', content: '8時10分から8時30分の間、展示室の監視カメラが突然「メンテナンスモード」に切り替わっていた。管理パネルへのアクセス権があるのは山田本人と佐藤秘書のみ。', importance: 'high' },
+        { id: 'c1-4', type: 'testimony', title: '鈴木の証言', action_label: '鈴木に話を聞く', focus_area: 'person_suzuki', focus_label: '👤 鈴木', content: '「あの宝石は最近になって偽物ではないかという噂がありましてね。私の鑑定では本物でしたが、独立鑑定を依頼されていたんです。結果が出る前に盗まれるとは…」', importance: 'red_herring' }
+      ]
+    },
+    {
+      phase: 2,
+      phase_title: '第2幕 — 新事実の発覚',
+      phase_narrative: '調査を進めるうちに、佐藤秘書が最近大きな借金を抱えていたことが判明した。さらに、展示室には一般に知られていない隠し通路の存在が明らかになった。',
+      total_cards: 4,
+      selectable: 2,
+      cards: [
+        { id: 'c2-1', type: 'evidence', title: '佐藤の銀行記録', action_label: '銀行記録を調べる', focus_area: 'documents', focus_label: '📄 書類', content: '佐藤花子の口座には先月、不審な大口の出金がある。さらに闇金業者からの借入が300万円に達していた。返済期限は来週に迫っている。', importance: 'high' },
+        { id: 'c2-2', type: 'circumstance', title: '隠し通路', action_label: '隠し通路を調べる', focus_area: 'location_passage', focus_label: '🚪 隠し通路', content: '展示室の壁に隠し通路が見つかった。この通路は佐藤の控室に直結している。通路の床には最近の靴跡があり、女性用ハイヒールの跡に一致する。', importance: 'critical' },
+        { id: 'c2-3', type: 'testimony', title: '田中の証言', action_label: '田中に話を聞く', focus_area: 'person_tanaka', focus_label: '👤 田中', content: '「叔父の遺産には興味ありません。私は自分の仕事で十分稼いでいます。それに、あの宝石より叔父の安全が心配です。最近、佐藤さんが叔父に何か隠しているような態度だったので…」', importance: 'medium' },
+        { id: 'c2-4', type: 'evidence', title: '合鍵の存在', action_label: '鍵の管理状況を調べる', focus_area: 'forensics', focus_label: '🔬 鑑識', content: '展示ケースのスペアキーが佐藤の机の引き出しから発見された。山田によれば、スペアキーの存在は佐藤にしか伝えていないとのこと。', importance: 'critical' }
+      ]
+    },
+    {
+      phase: 3,
+      phase_title: '第3幕 — 崩れるアリバイ',
+      phase_narrative: '決定的な証拠が次々と見つかり、事件の全容が明らかになりつつある。犯人のアリバイに致命的な矛盾が発見された。',
+      total_cards: 3,
+      selectable: 2,
+      cards: [
+        { id: 'c3-1', type: 'testimony', title: 'シェフの新証言', action_label: 'シェフに話を聞く', focus_area: 'person_chef', focus_label: '👨‍🍳 シェフ', content: '「8時の時点で佐藤さんはキッチンにいませんでした。彼女は"準備は済んだ"と言って出て行きました。戻ってきたのは8時40分頃で、少し息が上がっていたのを覚えています」', importance: 'critical' },
+        { id: 'c3-2', type: 'evidence', title: '防犯タグの反応', action_label: '防犯システムを調べる', focus_area: 'forensics', focus_label: '🔬 鑑識', content: '宝石に取り付けられていたRFIDタグの最終反応が8時22分に記録されている。その後信号は途絶えている。電波遮断には専門知識が必要だが、佐藤は以前セキュリティ会社に勤めていた経歴がある。', importance: 'high' },
+        { id: 'c3-3', type: 'circumstance', title: '不審な配送伝票', action_label: '配送伝票を調べる', focus_area: 'documents', focus_label: '📄 書類', content: '佐藤の車のダッシュボードから、翌日発送予定の国際配送伝票が見つかった。宛先は海外の宝石バイヤーで、品物は"アンティーク置時計"と記載されている。', importance: 'high' }
+      ]
+    }
+  ],
+  culprit_flashbacks: [
+    {
+      id: 1,
+      monologue: '……もう限界だった。あの借金さえなければ、こんなことをする必要はなかった。私はいつも通り準備を済ませ、誰にも気づかれないように控室へ戻った。時計を見ると8時10分。あと20分もあれば十分だ。',
+      time_hint: '8時10分'
+    },
+    {
+      id: 2,
+      monologue: '鍵は以前から持っていた。カメラも私が管理していた。すべてが計画通り。……震える手でケースを開けた瞬間、あの冷たい輝きが目に飛び込んできた。8時22分。急いでタグを外し、通路を抜けた。',
+      time_hint: '8時22分'
+    }
+  ],
+  solution: {
+    culprit: '佐藤花子',
+    motive_detail: '闇金からの300万円の借金返済のため、雇い主の宝石を盗んだ。返済期限が来週に迫っており、追い詰められていた。',
+    method_detail: '秘書としてのアクセス権限を悪用し、監視カメラをメンテナンスモードに切り替えた後、隠し通路を通って展示室に侵入。スペアキーでケースを開け、宝石のRFIDタグを無効化して持ち出した。',
+    timeline: '8:10 控室から移動 → 8:10 カメラ無効化 → 8:15 隠し通路経由で展示室へ → 8:22 宝石を取り出しRFIDタグ無効化 → 8:25 隠し通路で控室に帰還 → 8:40 キッチンに戻る',
+    key_evidence: '展示ケース裏側の隠しロック付近の指紋集中、隠し通路のハイヒール跡、佐藤の机からスペアキー発見、監視カメラの管理権限が佐藤にしかないこと'
+  },
+  questions: [
+    { id: 'q1', question: '犯人は誰ですか？', answer: '佐藤花子', type: 'choice', points: 3 },
+    { id: 'q2', question: '犯行の動機は何ですか？', answer: '闇金からの借金返済', type: 'text', points: 2 },
+    { id: 'q3', question: '犯行の手口は？', answer: '監視カメラ無効化→隠し通路→スペアキーで宝石窃取', type: 'text', points: 2 }
+  ],
+  full_story: 'デバッグ用テストシナリオ: 佐藤花子は10年間山田太郎の秘書として信頼を勝ち取っていたが、私生活では闇金からの借金が膨れ上がっていた。返済期限が迫る中、彼女は雇い主の最も価値ある宝石「月光の涙」に目をつけた。秘書として監視カメラの管理権限とスペアキーを持ち、展示室に隠し通路があることも知っていた。晩餐会当日、彼女は料理の準備を早めに終え、8時10分にカメラをメンテナンスモードに切り替え、隠し通路を通って展示室に侵入。8時22分にスペアキーで展示ケースを開き、RFIDタグを無効化して宝石を持ち出した。翌日にはダミーの名目で海外に発送する手はずまで整えていたが、探偵の推理により犯行が暴かれた。',
+  hints: [
+    { level: 1, text: '犯人は展示室への特別なアクセス手段を持つ人物です。誰が鍵やカメラの管理権限を持っているか考えてみましょう。', penalty: 1 },
+    { level: 2, text: '犯人は8時10分から8時40分の間にアリバイの空白があります。この時間帯に何をしていたのでしょうか？指紋の場所にも注目してください。', penalty: 1 },
+    { level: 3, text: '佐藤花子です。証拠: ①展示ケース裏の指紋、②隠し通路のハイヒール跡、③スペアキー、④カメラ管理権限、⑤借金と配送伝票。', penalty: 2 }
+  ]
+};
+

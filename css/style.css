@@ -3091,3 +3091,92 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ================================================
+   DEBUG PANEL — デバッグモード用UI
+   通常モードでは一切表示されない
+   ================================================ */
+
+#debug-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+
+.debug-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 6px var(--space-lg);
+  background: rgba(239, 68, 68, 0.12);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.debug-label {
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: 2px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.debug-info {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.debug-actions button {
+  padding: 3px 10px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.debug-actions button:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* デバッグパネルがある時はbodyの上端にスペースを空ける */
+body:has(#debug-panel) .screen {
+  padding-top: 38px;
+}
+
+body:has(#debug-panel) .title-bg {
+  padding-top: 38px;
+}
+
+@media (max-width: 600px) {
+  .debug-bar {
+    flex-wrap: wrap;
+    padding: 4px var(--space-sm);
+  }
+  .debug-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .debug-info {
+    display: none;
+  }
+}
+

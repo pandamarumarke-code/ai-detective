@@ -31,6 +31,7 @@ import {
   buildScenarioSystemPrompt, buildDeepValidationPrompt,
   buildJapaneseQualityPrompt, buildScoringPrompt, buildSolvabilityCheckPrompt
 } from './constants.js';
+import { isDebugMode, debugLog } from './debug.js';
 
 // CORSプロキシ: Vercel Serverless Function（本番）/ ローカルプロキシ（開発）
 const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
