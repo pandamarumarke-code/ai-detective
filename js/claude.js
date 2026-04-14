@@ -118,15 +118,23 @@ async function parseAnthropicStream(body, onChunkReceived) {
             }
             break;
 
-          case 'content_block_delta':
+          case 'content_block_delta': {
+            const idx = event.index ?? currentBlockIndex;
             if (event.delta?.type === 'text_delta' && event.delta.text) {
               currentText += event.delta.text;
-              if (contentBlocks[event.index ?? currentBlockIndex]) {
-                contentBlocks[event.index ?? currentBlockIndex].text =
-                  (contentBlocks[event.index ?? currentBlockIndex].text || '') + event.delta.text;
+              if (contentBlocks[idx]) {
+                contentBlocks[idx].text =
+                  (contentBlocks[idx].text || '') + event.delta.text;
+              }
+            } else if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
+              // Advisor Toolの入力 JSON（ログ用に保持）
+              if (contentBlocks[idx]) {
+                contentBlocks[idx].text =
+                  (contentBlocks[idx].text || '') + event.delta.partial_json;
               }
             }
             break;
+          }
 
           case 'content_block_stop':
             // ブロック完了 — 何もしない
@@ -320,7 +328,7 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
     const blockTypes = (data.content || []).map(b => `${b.type}(${(b.text || '').length}文字)`).join(', ');
     console.error('❌ テキストブロック空 - contentブロック:', blockTypes);
     console.error('❌ stop_reason:', data.stop_reason, '/ model:', data.model);
-    console.error('❌ data.content全体:', JSON.stringify(data.content || [], null, 2).substring(0, 500));
+    console.error('❌ data.content全体:', JSON.stringify(data.content || [], null, 2).substring(0, 1000));
 
     // フォールバック: 全ブロックのテキストを結合してJSON抽出を試みる
     const allText = (data.content || [])
@@ -338,7 +346,11 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
         }
       }
     }
-    throw new Error('Claude APIレスポンスにテキストが含まれていません（ブロック: ' + blockTypes + '）');
+    // Advisor使用時は _advisorFailed フラグを立てて、Advisorなしリトライを促す
+    const err = new Error(`Claude APIレスポンスにテキストが含まれていません（stop: ${data.stop_reason || 'unknown'}, ブロック: ${blockTypes}）`);
+    err._advisorFailed = true;
+    err._retryable = true;
+    throw err;
   }
 
   const text = textBlock.text;
@@ -426,17 +438,34 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       maxTokens: 8192,
       timeoutSec: TIMEOUTS.scenarioGeneration
     });
-    onProgress(1, 'done');
-    // チェックポイント: シナリオをlocalStorageに自動保存（エラー時のレジューム用）
-    try {
-      localStorage.setItem('ai_detective_checkpoint', JSON.stringify(scenario));
-      console.log('💾 チェックポイント保存完了');
-    } catch (saveErr) {
-      console.warn('チェックポイント保存失敗:', saveErr.message);
-    }
   } catch (e) {
-    onProgress(1, 'error');
-    throw e;
+    // Advisor使用時にテキストブロック空エラー → Advisorなしで自動リトライ
+    if (e._advisorFailed && advisorEnabled) {
+      console.warn('⚠️ Advisor使用時にエラー発生。Advisorなしでリトライします:', e.message);
+      onProgress(1, 'active');
+      scenario = await callClaude({
+        apiKey,
+        modelId,
+        system: buildScenarioSystemPrompt(theme, difficulty, usedNames, dna),
+        userMessage: '上記の条件に従って、ミステリーシナリオを1つ生成してください。すべてのフィールドを日本語で記述してください。',
+        schema: SCENARIO_SCHEMA,
+        useAdvisor: false,
+        temperature: 0.9 + (attempt * 0.05),
+        maxTokens: 8192,
+        timeoutSec: TIMEOUTS.scenarioGeneration
+      });
+    } else {
+      onProgress(1, 'error');
+      throw e;
+    }
+  }
+  onProgress(1, 'done');
+  // チェックポイント: シナリオをlocalStorageに自動保存（エラー時のレジューム用）
+  try {
+    localStorage.setItem('ai_detective_checkpoint', JSON.stringify(scenario));
+    console.log('💾 チェックポイント保存完了');
+  } catch (saveErr) {
+    console.warn('チェックポイント保存失敗:', saveErr.message);
   }
 
   // ---- Step 2: ローカル構造検証 (Pass 2) ----
