@@ -359,11 +359,15 @@ export function renderIntro() {
   setPhaseTheme(0); // 導入: ダークブルー
 
   // 場面設定画像（画像があれば導入テキストの前に挿入）
-  const sceneBase64 = store.state.imageCache?.scene;
+  const sceneData = store.state.imageCache?.scene;
   const introEl = $('#intro-text');
-  if (sceneBase64 && introEl) {
+  if (sceneData && introEl) {
+    // base64文字列かURLパスかを判定
+    const imgSrc = sceneData.startsWith('data:') || sceneData.length > 200
+      ? `data:image/png;base64,${sceneData}`
+      : sceneData;
     introEl.insertAdjacentHTML('beforebegin',
-      `<div class="scene-image"><img src="data:image/png;base64,${sceneBase64}" alt="事件の舞台" /></div>`);
+      `<div class="scene-image"><img src="${imgSrc}" alt="事件の舞台" /></div>`);
   }
 
   // タイプライター演出で導入文を表示
