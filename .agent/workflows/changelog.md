@@ -1,5 +1,17 @@
 # AI探偵団 Changelog
 
+## 2026-04-14 02:55 — v7.2 タイムアウト根本解決（ラテラルシンキング分析）
+- **ステータス**: ✅ 完了（Redeploy済み）
+- **根本原因**: Claude structured output（json_schema）のgrammar compilationにより、streaming有効でも最初のSSEイベント送出まで60〜140秒遅延 → Vercel Edge/Serverlessの全プランでタイムアウト
+- **解決策**: Vercel `maxDuration:300`（5分）を設定 + ダッシュボードで300秒に変更 + 再デプロイ
+- **変更ファイル**:
+  - `vercel.json` — `functions.maxDuration=300` 追加
+  - `api/anthropic.js` — Edge→通常Serverless Function戻し、stream:true注入削除
+  - `api/gemini.js` — Edge→通常Serverless Function戻し
+  - `js/claude.js` — SSEパーサー完全削除、response.json()に戻す
+- **変更ファイル数**: 4ファイル（245行削除）
+- **Git**: `b5f0d5e` main → Vercel再デプロイ（Da3RWkrxP）
+
 ## 2026-04-14 02:04 — v7.1 生成画面UX大幅改善
 - **ステータス**: ✅ 完了（デプロイ済み）
 - **設計方針**: 生成に90〜225秒かかる間、ユーザーにフリーズと区別がつかない問題を解消

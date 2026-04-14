@@ -1,25 +1,27 @@
 // ================================================
 // @ai-spec
 // @module    claude
-// @purpose   Claude API通信 + 5パス品質検証パイプライン + Advisor Tool連携
+// @purpose   Claude API通信 + 5パス品質検証パイプライン + Advisor Tool連携 + ストリーミング対応
 // @ssot      なし（ステートレス）
 // @depends   constants.js (MODELS, DIFFICULTIES, ADVISOR_CONFIG, プロンプトビルダー)
 // @exports   generateScenario, evaluateAnswer
 // @consumers app.js
 // @constraints
 //   - DOM操作禁止（純粋なAPI通信モジュール）
-//   - CORSプロキシ(localhost:3457)経由でのみ通信
+//   - CORSプロキシ経由でのみ通信
 //   - Advisor Tool使用時は beta header 必須
-// @dataflow  app.js → callClaude() → CORSプロキシ → Anthropic API → JSON → app.js
-// @updated   2026-04-14
+//   - ストリーミングモードでAnthropic SSEを受信してタイムアウト回避
+// @dataflow  app.js → callClaude() → CORSプロキシ → Anthropic API (SSE) → JSON → app.js
+// @updated   2025-04-14
 // ================================================
 // AI探偵団 — Claude API通信モジュール（ステートレス）
-// 4パス検証パイプライン:
+// 5パス検証パイプライン:
 //   Pass 1: シナリオ生成
 //   Pass 2: ローカル構造検証（9項目）
-//   Pass 3: AI論理検証（解決可能性証明・6観点）
-//   Pass 4: AI日本語品質検証（8観点）
-// + リトライ戦略 + 自動修正
+//   Pass 3: AI論理検証（解決可能性証明・6観点）← Pass4と並列
+//   Pass 4: AI日本語品質検証（8観点）← Pass3と並列
+//   Pass 5: 解答チェーン検証
+// + リトライ戦略 + 自動修正 + ストリーミング + AbortController
 // ================================================
 
 import {
@@ -35,14 +37,135 @@ const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'loca
 const API_URL = isLocal ? 'http://127.0.0.1:3457/proxy/anthropic' : '/api/anthropic';
 
 // ================================================
-// 低レベルAPI呼び出し
+// タイムアウト設定（秒）
+// ================================================
+const TIMEOUTS = {
+  scenarioGeneration: 240, // Pass 1: シナリオ生成（最も重い）
+  validation: 120,         // Pass 3/4: 検証パス
+  solvability: 90,         // Pass 5: 解答チェーン
+  scoring: 60              // 採点
+};
+
+// ================================================
+// SSEストリーミング レスポンスパーサー
+// ================================================
+
+/**
+ * Anthropic SSEストリームを読み取り、最終JSONを組み立てる
+ * @param {ReadableStream} body - fetchレスポンスのbody
+ * @returns {Promise<Object>} パース済みレスポンスオブジェクト（Messages API形式）
+ */
+async function parseAnthropicStream(body) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+
+  // 組み立て用バッファ
+  const contentBlocks = [];
+  let currentBlockIndex = -1;
+  let currentText = '';
+  let usage = null;
+  let model = '';
+  let stopReason = '';
+  let sseBuffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      sseBuffer += decoder.decode(value, { stream: true });
+
+      // SSEイベントを行単位でパース
+      const lines = sseBuffer.split('\n');
+      // 最後の不完全な行はバッファに残す
+      sseBuffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === '[DONE]') continue;
+
+        let event;
+        try {
+          event = JSON.parse(dataStr);
+        } catch {
+          continue;
+        }
+
+        switch (event.type) {
+          case 'message_start':
+            if (event.message) {
+              model = event.message.model || '';
+              usage = event.message.usage || null;
+            }
+            break;
+
+          case 'content_block_start':
+            currentBlockIndex = event.index ?? contentBlocks.length;
+            currentText = '';
+            if (event.content_block) {
+              contentBlocks[currentBlockIndex] = {
+                type: event.content_block.type || 'text',
+                text: '',
+                // Advisor関連のブロックもそのまま保持
+                ...event.content_block
+              };
+            }
+            break;
+
+          case 'content_block_delta':
+            if (event.delta?.type === 'text_delta' && event.delta.text) {
+              currentText += event.delta.text;
+              if (contentBlocks[event.index ?? currentBlockIndex]) {
+                contentBlocks[event.index ?? currentBlockIndex].text =
+                  (contentBlocks[event.index ?? currentBlockIndex].text || '') + event.delta.text;
+              }
+            }
+            break;
+
+          case 'content_block_stop':
+            // ブロック完了 — 何もしない
+            break;
+
+          case 'message_delta':
+            if (event.delta?.stop_reason) stopReason = event.delta.stop_reason;
+            if (event.usage) {
+              usage = { ...usage, ...event.usage };
+            }
+            break;
+
+          case 'message_stop':
+            // ストリーム終了
+            break;
+
+          case 'error':
+            throw new Error(`Anthropic Stream Error: ${event.error?.message || JSON.stringify(event)}`);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Messages API互換のレスポンスオブジェクトを返す
+  return {
+    content: contentBlocks.length > 0 ? contentBlocks : [{ type: 'text', text: currentText }],
+    model,
+    stop_reason: stopReason,
+    usage
+  };
+}
+
+// ================================================
+// 低レベルAPI呼び出し（ストリーミング対応）
 // ================================================
 
 /**
  * Claude Messages APIにリクエストを送信
+ * ストリーミングモードでレスポンスを受信し、タイムアウトを回避
  * Advisor Tool対応: useAdvisor=trueの場合、Sonnetが実行者、Opusがアドバイザー
  */
-async function callClaude({ apiKey, modelId, system, userMessage, schema, temperature = 0.9, maxTokens = 8192, useAdvisor = false, advisorMaxUses = 1 }) {
+async function callClaude({ apiKey, modelId, system, userMessage, schema, temperature = 0.9, maxTokens = 8192, useAdvisor = false, advisorMaxUses = 1, timeoutSec = TIMEOUTS.validation }) {
   // Advisor有効時: 実行者は常にSonnet、アドバイザーはOpus
   // Advisor無効時: modelIdで指定されたモデルを単体で使用
   const executorModel = useAdvisor ? ADVISOR_CONFIG.executor : (MODELS[modelId] || MODELS.sonnet).id;
@@ -84,6 +207,10 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
 
   // 無料モード: x-api-keyを送らず、x-free-modeヘッダーでサーバーに通知
   const isFreeMode = apiKey === 'FREE';
+
+  // ストリーミング: 本番(Vercel)のみ有効。ローカルプロキシは従来通り
+  const useStreaming = !isLocal;
+
   const headers = {
     'Content-Type': 'application/json',
     'anthropic-version': '2023-06-01',
@@ -94,14 +221,34 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   } else {
     headers['x-api-key'] = apiKey;
   }
+  if (useStreaming) {
+    headers['x-stream-mode'] = 'true';
+  }
 
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body)
-  });
+  // AbortController でタイムアウト制御
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutSec * 1000);
+
+  let response;
+  try {
+    response = await fetch(API_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (fetchErr) {
+    clearTimeout(timeoutId);
+    if (fetchErr.name === 'AbortError') {
+      throw new Error(`APIタイムアウト（${timeoutSec}秒）: リクエストが制限時間を超過しました。再試行してください。`);
+    }
+    throw fetchErr;
+  }
 
   if (!response.ok) {
+    clearTimeout(timeoutId);
     const errText = await response.text();
     let errMsg;
     try {
@@ -113,7 +260,17 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
     throw new Error(`Claude API Error (${response.status}): ${errMsg}`);
   }
 
-  const data = await response.json();
+  // ストリーミングレスポンスの場合: SSEをパース
+  let data;
+  try {
+    if (useStreaming && response.body) {
+      data = await parseAnthropicStream(response.body);
+    } else {
+      data = await response.json();
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Advisor Tool使用時: content配列に複数ブロック型がある
   // - type: "text" → テキスト出力（これを使う）
@@ -154,11 +311,11 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
 }
 
 // ================================================
-// 高レベルAPI — 4パス検証パイプライン
+// 高レベルAPI — 5パス検証パイプライン
 // ================================================
 
 /**
- * ミステリーシナリオを生成・検証する（4パスパイプライン + リトライ）
+ * ミステリーシナリオを生成・検証する（5パスパイプライン + リトライ）
  *
  * @param {Object} params
  * @param {string} params.apiKey
@@ -195,6 +352,7 @@ export async function generateScenario({ apiKey, modelId, theme, difficulty, adv
 
 /**
  * パイプライン1回分の実行
+ * Pass 3/4を並列化、各PassにAbortControllerタイムアウトを適用
  */
 async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled, usedNames, dna, onProgress, attempt }) {
   // Advisor使用時のプロンプト追加文
@@ -215,7 +373,8 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       useAdvisor: advisorEnabled,
       advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
       temperature: 0.9 + (attempt * 0.05),
-      maxTokens: 8192
+      maxTokens: 8192,
+      timeoutSec: TIMEOUTS.scenarioGeneration
     });
     onProgress(1, 'done');
   } catch (e) {
@@ -241,28 +400,69 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     throw e;
   }
 
-  // ---- Step 3: AI論理検証 (Pass 3) ----
+  // ---- Step 3 & 4: AI論理検証 + AI日本語品質検証 (並列実行) ----
   onProgress(3, 'active');
-  let logicResult;
-  try {
-    logicResult = await callClaude({
-      apiKey,
-      modelId,
-      system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。合格基準は高く設定してください。',
-      userMessage: buildDeepValidationPrompt(scenario) + (advisorEnabled ? '\n\n【重要】advisorに相談して、解決可能性の証明と論理的矛盾の判定を依頼してください。advisorの判断結果に基づいて、JSONフォーマットで検証結果を構造化してください。' : ''),
-      schema: DEEP_VALIDATION_SCHEMA,
-      useAdvisor: advisorEnabled,
-      advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.logicValidation,
-      temperature: 0.1,
-      maxTokens: 4096
-    });
-    scenario._logicValidation = logicResult;
+  onProgress(4, 'active');
+
+  let logicResult, jpResult;
+
+  // Pass 3: AI論理検証
+  const logicPromise = callClaude({
+    apiKey,
+    modelId,
+    system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。合格基準は高く設定してください。',
+    userMessage: buildDeepValidationPrompt(scenario) + (advisorEnabled ? '\n\n【重要】advisorに相談して、解決可能性の証明と論理的矛盾の判定を依頼してください。advisorの判断結果に基づいて、JSONフォーマットで検証結果を構造化してください。' : ''),
+    schema: DEEP_VALIDATION_SCHEMA,
+    useAdvisor: advisorEnabled,
+    advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.logicValidation,
+    temperature: 0.1,
+    maxTokens: 4096,
+    timeoutSec: TIMEOUTS.validation
+  }).then(result => {
+    logicResult = result;
+    scenario._logicValidation = result;
+    onProgress(3, 'done');
+    return { success: true, result };
+  }).catch(e => {
+    console.warn('AI論理検証エラー:', e.message);
+    onProgress(3, 'done'); // タイムアウトでもdoneにしてUIを進める
+    return { success: false, error: e };
+  });
+
+  // Pass 4: AI日本語品質検証
+  const jpPromise = callClaude({
+    apiKey,
+    modelId,
+    system: 'あなたは日本語校正の専門家です。ミステリーシナリオのテキスト品質を厳密に評価してください。',
+    userMessage: buildJapaneseQualityPrompt(scenario, theme) + (advisorEnabled ? '\n\n【重要】advisorに相談して、総合的な品質判定とスコアリングを依頼してください。advisorの判断結果に基づいて、修正提案をJSON形式で構造化してください。' : ''),
+    schema: JAPANESE_QUALITY_SCHEMA,
+    useAdvisor: advisorEnabled,
+    advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.japaneseQuality,
+    temperature: 0.1,
+    maxTokens: 4096,
+    timeoutSec: TIMEOUTS.validation
+  }).then(result => {
+    jpResult = result;
+    scenario._japaneseQuality = result;
+    onProgress(4, 'done');
+    return { success: true, result };
+  }).catch(e => {
+    console.warn('日本語品質検証エラー:', e.message);
+    onProgress(4, 'done');
+    return { success: false, error: e };
+  });
+
+  // 両方を並列待機
+  const [logicOutcome, jpOutcome] = await Promise.all([logicPromise, jpPromise]);
+
+  // -- Pass 3 結果処理 --
+  if (logicOutcome.success) {
+    logicResult = logicOutcome.result;
 
     // 解決可能性チェック — 解けないシナリオは即リトライ
     if (!logicResult.is_solvable) {
       const err = new Error('手がかりから犯人を論理的に特定できないシナリオです');
       err._retryable = true;
-      onProgress(3, 'error');
       throw err;
     }
 
@@ -270,58 +470,36 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     if (logicResult.overall_score < VALIDATION_THRESHOLDS.logicPassScore) {
       const err = new Error(`論理品質スコア ${logicResult.overall_score}/100 が基準(${VALIDATION_THRESHOLDS.logicPassScore})未満`);
       err._retryable = true;
-      onProgress(3, 'error');
       throw err;
     }
-
-    onProgress(3, 'done');
-  } catch (e) {
-    if (e._retryable) throw e;
-    // APIエラーの場合は警告のみで続行
-    console.warn('AI論理検証スキップ:', e.message);
-    scenario._logicValidation = {
+  } else {
+    // APIエラーの場合はフォールバック値で続行
+    logicResult = {
       is_valid: true, is_solvable: true, reasoning_chain: '(検証スキップ)',
       alibi_check: '', timeline_check: '', red_herring_check: '',
       evidence_match: '', fairness_check: '', overall_score: 70,
-      critical_issues: ['論理検証APIエラーのためスキップ'], suggestions: []
+      critical_issues: ['論理検証タイムアウトのためスキップ'], suggestions: []
     };
-    onProgress(3, 'done');
+    scenario._logicValidation = logicResult;
   }
 
-  // ---- Step 4: AI日本語品質検証 (Pass 4) ----
-  onProgress(4, 'active');
-  let jpResult;
-  try {
-    jpResult = await callClaude({
-      apiKey,
-      modelId,
-      system: 'あなたは日本語校正の専門家です。ミステリーシナリオのテキスト品質を厳密に評価してください。',
-      userMessage: buildJapaneseQualityPrompt(scenario, theme) + (advisorEnabled ? '\n\n【重要】advisorに相談して、総合的な品質判定とスコアリングを依頼してください。advisorの判断結果に基づいて、修正提案をJSON形式で構造化してください。' : ''),
-      schema: JAPANESE_QUALITY_SCHEMA,
-      useAdvisor: advisorEnabled,
-      advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.japaneseQuality,
-      temperature: 0.1,
-      maxTokens: 4096
-    });
-    scenario._japaneseQuality = jpResult;
+  // -- Pass 4 結果処理 --
+  if (jpOutcome.success) {
+    jpResult = jpOutcome.result;
 
     if (jpResult.overall_score < VALIDATION_THRESHOLDS.japanesePassScore) {
       const err = new Error(`日本語品質スコア ${jpResult.overall_score}/100 が基準(${VALIDATION_THRESHOLDS.japanesePassScore})未満`);
       err._retryable = true;
-      onProgress(4, 'error');
       throw err;
     }
-
-    onProgress(4, 'done');
-  } catch (e) {
-    if (e._retryable) throw e;
-    console.warn('日本語品質検証スキップ:', e.message);
-    scenario._japaneseQuality = {
+  } else {
+    // フォールバック値で続行
+    jpResult = {
       grammar_score: 80, name_consistency: true, tone_consistency: true,
       theme_fit: 80, clarity: 80, style_unity: true, length_check: true,
-      kanji_balance: 80, overall_score: 80, issues: ['検証スキップ'], corrections: []
+      kanji_balance: 80, overall_score: 80, issues: ['検証タイムアウトのためスキップ'], corrections: []
     };
-    onProgress(4, 'done');
+    scenario._japaneseQuality = jpResult;
   }
 
   // ---- Step 5: 自動修正の適用 ----
@@ -353,7 +531,8 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       userMessage: buildSolvabilityCheckPrompt(scenario),
       schema: SOLVABILITY_CHECK_SCHEMA,
       temperature: 0.1,
-      maxTokens: 2048
+      maxTokens: 1024, // 2048→1024に最適化
+      timeoutSec: TIMEOUTS.solvability
     });
     scenario._solvabilityCheck = solvCheck;
 
@@ -365,7 +544,12 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
     console.log(`✅ 解答チェーン検証 OK (確信度${solvCheck.confidence}%)`);
   } catch (e) {
     if (e._retryable) throw e;
+    // タイムアウト含むAPIエラーの場合は警告のみで続行
     console.warn('解答チェーン検証スキップ:', e.message);
+    scenario._solvabilityCheck = {
+      is_solvable: true, culprit_chain: '(検証スキップ)', motive_chain: '(検証スキップ)',
+      method_chain: '(検証スキップ)', confidence: 60, missing_info: ['タイムアウトのため検証省略']
+    };
   }
 
   // ---- Step 6: 完了 ----
@@ -663,7 +847,8 @@ export async function evaluateAnswer({ apiKey, modelId, solution, answers, advis
       useAdvisor: advisorEnabled,
       advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scoring,
       temperature: 0.1,
-      maxTokens: 2048
+      maxTokens: 2048,
+      timeoutSec: TIMEOUTS.scoring
     });
   } catch (e) {
     console.warn('AI採点失敗、ローカル採点にフォールバック:', e.message);
