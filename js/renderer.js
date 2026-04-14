@@ -597,6 +597,7 @@ export function showHintText(hint, hintsUsed) {
 export function renderAnswerPhase() {
   store.update({ currentPhase: 4 });
   updateProgress(4);
+  setPhaseTheme(4); // 推理提出: 純金（決断の瞬間）
 
   const choices = $('#suspect-choices');
   choices.innerHTML = '';
@@ -645,11 +646,25 @@ export function renderResult() {
   $('#result-title').textContent = rank.title;
   $('#result-title').style.color = rank.color || '';
   
-  let scoreText = `${adjustedTotal} / ${result.max_total} ポイント`;
+  // スコアカウントアップ演出
+  const scoreEl = $('#result-score');
+  let scoreDisplay = `${adjustedTotal} / ${result.max_total} ポイント`;
   if (hintPenalty > 0) {
-    scoreText += ` （ヒントペナルティ: -${hintPenalty}）`;
+    scoreDisplay += ` （ヒントペナルティ: -${hintPenalty}）`;
   }
-  $('#result-score').textContent = scoreText;
+  // 0からカウントアップ
+  let currentScore = 0;
+  scoreEl.textContent = `0 / ${result.max_total} ポイント`;
+  const scoreInterval = setInterval(() => {
+    currentScore++;
+    if (currentScore >= adjustedTotal) {
+      currentScore = adjustedTotal;
+      clearInterval(scoreInterval);
+      scoreEl.textContent = scoreDisplay;
+    } else {
+      scoreEl.textContent = `${currentScore} / ${result.max_total} ポイント`;
+    }
+  }, 120);
 
   // 答え合わせ
   const answersEl = $('#result-answers');
