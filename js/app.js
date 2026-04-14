@@ -484,6 +484,9 @@ function setupEventListeners() {
       // プリセット選択→即座にゲーム開始（生成画面スキップ）
       store.resetGame();
       store.update({ scenario: preset, theme: preset.theme || 'classic' });
+      if (preset.scene_image) {
+        store.setSceneImage(preset.scene_image);
+      }
       store.incrementCase();
       R.renderIntro();
       R.showScreen('game');
