@@ -39,6 +39,10 @@
             <span class="btn-icon">👥</span>
             みんなで遊ぶ
           </button>
+          <button id="btn-presets" class="btn btn-secondary btn-glow-amber">
+            <span class="btn-icon">📚</span>
+            サンプル事件で遊ぶ
+          </button>
           <button id="btn-history" class="btn btn-secondary">
             <span class="btn-icon">📁</span>
             事件簿を見る
@@ -50,6 +54,20 @@
         </div>
         <div id="free-play-badge" class="free-play-badge"></div>
         <div class="title-stats" id="title-stats"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCREEN: プリセットシナリオ選択画面             -->
+  <!-- ============================================ -->
+  <div id="screen-presets" class="screen">
+    <div class="presets-container">
+      <button class="btn-back" id="btn-presets-back">← 戻る</button>
+      <h2 class="section-title">📚 サンプル事件ファイル</h2>
+      <p class="presets-subtitle">APIキー不要・すぐにプレイできるミステリー10本</p>
+      <div class="presets-grid" id="presets-grid">
+        <!-- renderer.jsが動的に生成 -->
       </div>
     </div>
   </div>

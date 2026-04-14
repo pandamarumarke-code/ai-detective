@@ -26,6 +26,7 @@ import { animateCardReveal } from './cards.js';
 import { detectSharedScenario, generateShareURL, shareURL, revealSharedSolution } from './share.js';
 import * as R from './renderer.js';
 import { isDebugMode, initDebugMode, getMockScenario, getMockImage, getMockScoringResult, debugLog } from './debug.js';
+import { PRESET_SCENARIOS } from './presets.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -476,6 +477,23 @@ function setupEventListeners() {
   $('#btn-new-game').addEventListener('click', () => R.showScreen('config'));
   $('#btn-history').addEventListener('click', () => R.openModal('history'));
   $('#btn-settings').addEventListener('click', () => R.openModal('settings'));
+
+  // プリセットシナリオボタン
+  $('#btn-presets').addEventListener('click', () => {
+    R.renderPresetList(PRESET_SCENARIOS, (preset) => {
+      // プリセット選択→即座にゲーム開始（生成画面スキップ）
+      store.resetGame();
+      store.update({ scenario: preset, theme: preset.theme || 'classic' });
+      store.incrementCase();
+      R.renderIntro();
+      R.showScreen('game');
+    });
+    R.showScreen('presets');
+  });
+  $('#btn-presets-back').addEventListener('click', () => {
+    R.renderTitleStats();
+    R.showScreen('title');
+  });
 
   // レジュームボタン: 保存済みシナリオからゲーム開始
   const resumeBtn = $('#btn-resume-game');

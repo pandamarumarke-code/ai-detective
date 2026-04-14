@@ -949,3 +949,44 @@ export function showToast(message, duration = 3000) {
     setTimeout(() => { toast.style.display = 'none'; }, 300);
   }, duration);
 }
+
+// ================================================
+// プリセットシナリオ選択一覧
+// ================================================
+
+const THEME_ICONS = { classic: '🏛️', school: '🏫', sf: '🚀', japanese: '⛩️', noir: '🌃', fantasy: '🧙' };
+const DIFFICULTY_STARS = { easy: '⭐', normal: '⭐⭐', hard: '⭐⭐⭐' };
+const DIFFICULTY_LABELS = { easy: 'ビギナー', normal: 'スタンダード', hard: 'ハード' };
+
+export function renderPresetList(presets, onSelect) {
+  const grid = $('#presets-grid');
+  grid.innerHTML = '';
+
+  presets.forEach((preset, i) => {
+    const card = document.createElement('button');
+    card.className = 'preset-card';
+    card.style.animationDelay = `${i * 0.06}s`;
+
+    const themeIcon = THEME_ICONS[preset.theme] || '🔍';
+    const stars = DIFFICULTY_STARS[preset.difficulty] || '⭐⭐';
+    const diffLabel = DIFFICULTY_LABELS[preset.difficulty] || 'スタンダード';
+    const introPreview = preset.introduction.substring(0, 80) + '…';
+
+    card.innerHTML = `
+      <div class="preset-card-header">
+        <span class="preset-theme-icon">${themeIcon}</span>
+        <span class="preset-difficulty">${stars} ${diffLabel}</span>
+      </div>
+      <h3 class="preset-card-title">${escapeHTML(preset.title)}</h3>
+      <p class="preset-card-setting">${escapeHTML(preset.setting.location)}</p>
+      <p class="preset-card-preview">${escapeHTML(introPreview)}</p>
+      <div class="preset-card-footer">
+        <span class="preset-suspects">👤 容疑者${preset.suspects.length}人</span>
+        <span class="preset-phases">📋 ${preset.investigation_phases.length}幕構成</span>
+      </div>
+    `;
+
+    card.addEventListener('click', () => onSelect(preset));
+    grid.appendChild(card);
+  });
+}
