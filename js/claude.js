@@ -427,6 +427,13 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       timeoutSec: TIMEOUTS.scenarioGeneration
     });
     onProgress(1, 'done');
+    // チェックポイント: シナリオをlocalStorageに自動保存（エラー時のレジューム用）
+    try {
+      localStorage.setItem('ai_detective_checkpoint', JSON.stringify(scenario));
+      console.log('💾 チェックポイント保存完了');
+    } catch (saveErr) {
+      console.warn('チェックポイント保存失敗:', saveErr.message);
+    }
   } catch (e) {
     onProgress(1, 'error');
     throw e;

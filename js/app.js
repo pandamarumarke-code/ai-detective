@@ -160,6 +160,8 @@ async function startGeneration() {
     store.incrementCase();
 
     setTimeout(() => {
+      // ゲーム正常開始: チェックポイントをクリア
+      localStorage.removeItem('ai_detective_checkpoint');
       R.renderIntro();
       R.showScreen('game');
     }, 500);
@@ -474,6 +476,29 @@ function setupEventListeners() {
   $('#btn-new-game').addEventListener('click', () => R.showScreen('config'));
   $('#btn-history').addEventListener('click', () => R.openModal('history'));
   $('#btn-settings').addEventListener('click', () => R.openModal('settings'));
+
+  // レジュームボタン: 保存済みシナリオからゲーム開始
+  const resumeBtn = $('#btn-resume-game');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      try {
+        const saved = localStorage.getItem('ai_detective_checkpoint');
+        if (!saved) return;
+        const scenario = JSON.parse(saved);
+        store.resetGame();
+        store.update({ scenario });
+        store.incrementCase();
+        localStorage.removeItem('ai_detective_checkpoint');
+        console.log('▶️ チェックポイントからレジューム');
+        R.renderIntro();
+        R.showScreen('game');
+      } catch (err) {
+        console.error('レジューム失敗:', err);
+        localStorage.removeItem('ai_detective_checkpoint');
+        resumeBtn.style.display = 'none';
+      }
+    });
+  }
 
   // ---- 設定画面 ----
   $('#btn-config-back').addEventListener('click', () => {
@@ -851,6 +876,13 @@ function init() {
   R.renderTitleStats();
   R.renderFreePlayBadge();
   setupEventListeners();
+
+  // チェックポイントがあれば「前回の事件を再開する」ボタンを表示
+  const checkpoint = localStorage.getItem('ai_detective_checkpoint');
+  const resumeEl = $('#btn-resume-game');
+  if (checkpoint && resumeEl) {
+    resumeEl.style.display = '';
+  }
 
   // ==== デバッグイベントハンドラー ====
   document.addEventListener('debug:mockGenerate', () => {
