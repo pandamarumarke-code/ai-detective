@@ -20,6 +20,9 @@
 import store from './store.js';
 import { MOCK_SCENARIO } from './constants.js';
 
+// セッション内フラグ（ページリロードでリセット。localStorage永続化を廃止）
+let _sessionDebug = false;
+
 // ================================================
 // デバッグモード判定
 // ================================================
@@ -30,13 +33,13 @@ import { MOCK_SCENARIO } from './constants.js';
  * @returns {boolean}
  */
 export function isDebugMode() {
-  // 1. URLパラメータ
+  // 1. URLパラメータ（唯一の正規起動方法）
   if (typeof location !== 'undefined') {
     const params = new URLSearchParams(location.search);
     if (params.get('debug') === 'true') return true;
   }
-  // 2. store state
-  if (store.state.debugMode) return true;
+  // 2. セッション内フラグ（initDebugModeで設定。ページリロードでリセット）
+  if (_sessionDebug) return true;
   // 3. window global（コンソールから動的ON用）
   if (typeof window !== 'undefined' && window.__debugDetective) return true;
   return false;
@@ -49,8 +52,17 @@ export function initDebugMode() {
   if (typeof location !== 'undefined') {
     const params = new URLSearchParams(location.search);
     if (params.get('debug') === 'true') {
-      store.enableDebug();
+      _sessionDebug = true;
     }
+    // ?debug=false で明示的にOFF（localStorageの残骸もクリア）
+    if (params.get('debug') === 'false') {
+      _sessionDebug = false;
+      store.disableDebug();
+    }
+  }
+  // localStorageの古い値をクリーンアップ（既存ユーザー対策）
+  if (localStorage.getItem('ai_detective_debug')) {
+    localStorage.removeItem('ai_detective_debug');
   }
   if (isDebugMode()) {
     renderDebugPanel();

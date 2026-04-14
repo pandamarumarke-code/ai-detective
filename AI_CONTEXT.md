@@ -15,8 +15,8 @@
 | **技術スタック** | Vanilla HTML/CSS/JS (ES Modules) + Claude API + Gemini API + Supabase Realtime |
 | **デプロイ先** | Vercel（GitHub連携自動デプロイ）+ Supabase（マルチプレイ） |
 | **ローカル起動** | `npx http-server ./ai-detective -p 3456 --cors -c-1` + `node proxy.cjs` |
-| **現在のバージョン** | v7.1 |
-| **ステータス** | 開発中（デバッグモード追加・画像生成エラー修正済み） |
+| **現在のバージョン** | v7.2 |
+| **ステータス** | 開発中（デバッグモードセッション化・画像生成エラー修正済み） |
 
 ---
 
@@ -56,16 +56,17 @@
 - **モジュール方式**: ES Modules (type="module") ※supabase.js/multiplayer.jsはUMD(CDN)
 - **CORSプロキシ**: proxy.cjs (Node.js) → Vercel Serverless Functions (api/*.js)
 - **AI戦略**: Advisor Tool (Opus=アドバイザー, Sonnet=実行者) ON/OFF切替
-- **デバッグモード**: `?debug=true` / localStorage / コンソールの3方式でON（APIコスト$0）
+- **デバッグモード**: `?debug=true` / コンソールの2方式でON（セッション限定、APIコスト$0）
 
 ### デバッグモード
 ```
-ON方法: URL ?debug=true / localStorage ai_detective_debug=true / window.__debugDetective=true
+ON方法: URL ?debug=true / window.__debugDetective=true（セッション限定、リロードでOFF）
 機能:
   - モックシナリオで即座にゲーム開始（API呼び出しゼロ）
   - デバッグパネル（フェーズスキップ・全カード公開・結果画面直行）
   - 構造化ログ（window.__debugLogs でアクセス可能）
-OFF方法: URL ?debug=false / store.disableDebug() / localStorage削除
+OFF方法: ページリロード / URL ?debug=false
+注意: localStorage永続化は廃止済み。セッション終了時に自動でOFFになる
 ```
 
 ### ゲームフロー（v7.1）
@@ -106,4 +107,4 @@ OFF方法: URL ?debug=false / store.disableDebug() / localStorage削除
 |------|------|
 | **更新日** | 2026-04-14 |
 | **更新者** | AI (Antigravity) |
-| **変更内容** | v7.1: デバッグモード追加、Gemini画像生成エラー修正（responseModalities: ['TEXT','IMAGE']） |
+| **変更内容** | v7.2: デバッグモードセッション化（localStorage永続化廃止→本番デバッグパネル露出修正） |

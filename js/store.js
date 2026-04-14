@@ -49,8 +49,8 @@ function createInitialState() {
     // Advisor戦略（Opus+Sonnet連携、デフォルトON）
     advisorEnabled: localStorage.getItem(STORAGE_KEYS.ADVISOR_ENABLED) !== 'false',
 
-    // デバッグモード
-    debugMode: localStorage.getItem(STORAGE_KEYS.DEBUG) === 'true',
+    // デバッグモード（セッションベース: localStorage永続化廃止。debug.jsの_sessionDebugで管理）
+    debugMode: false,
 
     // 無料プレイ管理
     freePlayRemaining: calcFreePlayRemaining(),

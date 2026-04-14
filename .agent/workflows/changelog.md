@@ -1,5 +1,25 @@
 # AI探偵団 Changelog
 
+## 2026-04-14 11:15 — v7.3 デバッグモード追加 + Gemini画像生成エラー修正（CWFモデル）
+- **ステータス**: ✅ 完了（デプロイ済み・検証済み）
+- **CWFフェーズ**: Phase 0(AI_CONTEXT.md更新) → 1(計画) → 2(V1/V2/V3全PASS) → 4(実装) → 6(デプロイ) → 7(コンテキスト更新)
+- **課題1 — Gemini画像生成400エラー**: `responseModalities: ['IMAGE']` → `['TEXT', 'IMAGE']` に修正（Gemini API仕様変更対応）
+- **課題2 — デバッグモード不在**: API呼び出しゼロでテストプレイ可能なデバッグモードを新設
+- **課題3 — Vercelデプロイ失敗**: `vercel.json`の`supportsResponseStreaming`が無効プロパティ → 削除
+- **変更ファイル**:
+  - `js/debug.js` (新規) — デバッグモード制御（モック生成・ログ・パネルUI）
+  - `js/gemini.js` — responseModalities修正
+  - `js/constants.js` — MOCK_SCENARIO追加（テスト用完全シナリオ）
+  - `js/store.js` — debugModeフラグ + enableDebug/disableDebug
+  - `js/app.js` — デバッグモード分岐 + デバッグイベントハンドラー
+  - `js/claude.js` — debugモジュールimport追加
+  - `css/style.css` — デバッグパネルCSS
+  - `vercel.json` — supportsResponseStreaming削除
+  - `AI_CONTEXT.md` — v7.1→v7.3更新
+- **変更ファイル数**: 9ファイル（550行追加、21行削除）
+- **Git**: `c416925` main → Vercel自動デプロイ（Ready確認済み）
+- **デバッグモード使用方法**: URL `?debug=true` / localStorage / コンソール `window.__debugDetective = true`
+
 ## 2026-04-14 02:55 — v7.2 タイムアウト根本解決（ラテラルシンキング分析）
 - **ステータス**: ✅ 完了（Redeploy済み）
 - **根本原因**: Claude structured output（json_schema）のgrammar compilationにより、streaming有効でも最初のSSEイベント送出まで60〜140秒遅延 → Vercel Edge/Serverlessの全プランでタイムアウト
