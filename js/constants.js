@@ -264,7 +264,7 @@ export const VALIDATION_THRESHOLDS = {
   logicPassScore: 70,         // Pass 3 AI論理検証の合格スコア
   japanesePassScore: 60,      // Pass 4 日本語品質の合格スコア
   japaneseAutoFixScore: 80,   // この値以上なら自動修正なしで合格
-  minIntroLength: 200,        // 導入文の最小文字数
+  minIntroLength: 400,        // 導入文の最小文字数（v7.12: 200→400）
   minCardContentLength: 30,   // カード内容の最小文字数
   minHints: 3                 // ヒントの最低数
 };
@@ -337,10 +337,17 @@ export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = [],
 - 80〜200文字、time_hintに時刻を含める
 
 ## 必須条件
-- 導入文: 300〜500文字、カード: 50〜150文字
+- 導入文: 600〜1000文字（3〜4段落構成）、カード: 50〜150文字
 - 全容疑者にもっともらしい動機、時系列に矛盾なし
 - ヒント3段階（方向性→絞り込み→ほぼ正解）
 - 回答: 犯人(3点)+動機(2点)+手口(2点)=合計7点
+
+## 導入文の構成ガイド（600〜1000文字）
+導入文は以下の4段落で構成し、プレイヤーを物語に引き込むこと：
+1. **事件の発端**: 何が起きたか（殺人・盗難・失踪等）を劇的に描写
+2. **舞台の描写**: 事件現場の雰囲気・時代背景・空気感を五感で伝える
+3. **登場人物の関係性**: 被害者と容疑者たちの関係を暗示（ただし犯人は示さない）
+4. **探偵への依頼**: プレイヤー（探偵）への調査依頼。緊迫感を持たせる
 
 ## 🔍 自己検証（生成後に必ず実行）
 シナリオ生成後、以下の4項目を_self_validationフィールドに記録してください:
@@ -505,7 +512,7 @@ export const SCENARIO_SCHEMA = {
           atmosphere: { type: 'string' }
         }
       },
-      introduction: { type: 'string', description: '事件の導入テキスト（300〜500文字）' },
+      introduction: { type: 'string', description: '事件の導入テキスト（600〜1000文字、3〜4段落構成）' },
       victim: {
         type: 'object',
         required: ['name', 'age', 'role', 'cause_of_death'],
