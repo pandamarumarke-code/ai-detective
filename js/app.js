@@ -165,11 +165,14 @@ async function startGeneration() {
     }, 500);
   } catch (e) {
     console.error('シナリオ生成エラー:', e);
+    // 途中まで成功したシナリオがあれば保持（フォールバック用）
+    // store.state.scenarioが設定済み = Pass 1成功後のエラー
+    const hasPartialScenario = !!store.state.scenario;
     // ネタバレ防止: ユーザーには詳細を見せず、安全なメッセージのみ表示
     const safeMsg = e.message?.includes('構造検証') || e.message?.includes('解答チェーン')
       ? 'シナリオの品質基準を満たせませんでした。再試行してください。'
       : e.message;
-    R.showGenError(`エラー: ${safeMsg}`);
+    R.showGenError(`エラー: ${safeMsg}`, hasPartialScenario);
   }
 }
 
@@ -885,12 +888,26 @@ function init() {
     store.update({ result: mockResult, playerAnswers: { culprit: s.solution.culprit, motive: 'デバッグ', method: 'デバッグ' } });
     R.renderResult();
   });
-  // エラー発生時のフォールバック: デバッグモードに切り替えてモック生成
+  // エラー発生時のフォールバック: 途中継続 or モック生成
   document.addEventListener('debug:fallbackGenerate', () => {
-    debugLog('ui', 'フォールバック: デバッグモードでモック生成');
-    // セッション内でデバッグモードを有効化（_sessionDebugをON）
-    window.__debugDetective = true;
-    startGeneration();
+    const existingScenario = store.state.scenario;
+
+    if (existingScenario) {
+      // Pass 1成功後のエラー → 生成済みシナリオでゲーム開始（検証スキップ）
+      debugLog('ui', 'フォールバック: 生成済みシナリオで継続（検証スキップ）');
+      // 残りのステップを完了表示
+      for (let s = 1; s <= 8; s++) R.updateGenStep(s, 'done');
+      store.incrementCase();
+      setTimeout(() => {
+        R.renderIntro();
+        R.showScreen('game');
+      }, 300);
+    } else {
+      // Pass 1失敗 → デバッグモードでモック生成
+      debugLog('ui', 'フォールバック: デバッグモードでモック生成');
+      window.__debugDetective = true;
+      startGeneration();
+    }
   });
 
   // 設定モーダルの初期値を反映

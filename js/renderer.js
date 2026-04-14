@@ -248,15 +248,18 @@ export function showGenRetry(message) {
   setTimeout(() => { if (el) el.style.display = 'none'; }, 3000);
 }
 
-export function showGenError(message) {
+export function showGenError(message, hasPartialScenario = false) {
   $('#gen-error').style.display = 'block';
   $('#gen-error-text').textContent = message;
-  // 「デバッグモードで試す」ボタンを追加（APIエラー時のフォールバック）
+  // フォールバックボタン: シナリオの有無に応じてテキストを出し分け
   const debugBtnArea = $('#gen-error-debug');
   if (debugBtnArea) {
+    const btnLabel = hasPartialScenario
+      ? '▶️ 検証をスキップしてプレイ開始（生成済みシナリオを使用）'
+      : '🔧 モックデータでお試しプレイ（API不要）';
     debugBtnArea.innerHTML = `
       <button class="btn btn-ghost" id="btn-try-debug" style="margin-top:12px;font-size:0.85rem;opacity:0.8;">
-        🔧 モックデータでお試しプレイ（API不要）
+        ${btnLabel}
       </button>
     `;
     debugBtnArea.querySelector('#btn-try-debug')?.addEventListener('click', () => {
