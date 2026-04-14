@@ -183,11 +183,14 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   // Advisor無効時: modelIdで指定されたモデルを単体で使用
   const executorModel = useAdvisor ? ADVISOR_CONFIG.executor : (MODELS[modelId] || MODELS.sonnet).id;
 
+  // Prompt Caching対応: systemが配列形式（cache_control付き）ならそのまま送信
+  const systemContent = Array.isArray(system) ? system : system;
+
   const body = {
     model: executorModel,
     max_tokens: maxTokens,
     temperature,
-    system,
+    system: systemContent,
     messages: [
       { role: 'user', content: userMessage }
     ]
@@ -214,8 +217,8 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
     };
   }
 
-  // ベータヘッダーの組み立て
-  const betaHeaders = ['structured-outputs-2025-11-13'];
+  // ベータヘッダーの組み立て（Prompt Caching + Structured Outputs）
+  const betaHeaders = ['structured-outputs-2025-11-13', 'prompt-caching-2024-07-31'];
   if (useAdvisor) betaHeaders.push(ADVISOR_CONFIG.betaHeader);
 
   // 無料モード: x-api-keyを送らず、x-free-modeヘッダーでサーバーに通知
@@ -605,28 +608,51 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
   //   → [不合格] マイクロ修正(30-60s) → ローカル再検証(0s) → 続行
   // ════════════════════════════════════════════════════════════
 
-  // ---- Step 3: AI論理検証 (Pass 3) — ブロッキング ----
+  // ---- Step 3: AI論理検証 (Pass 3) ----
   onProgress(3, 'active');
   let logicResult = null;
   const validationUseAdvisor = false; // Advisor不使用（高速化 + エラー回避）
 
-  try {
-    logicResult = await callClaude({
-      apiKey, modelId,
-      system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。',
-      userMessage: buildDeepValidationPrompt(scenario),
-      schema: DEEP_VALIDATION_SCHEMA,
-      useAdvisor: validationUseAdvisor,
-      temperature: 0.1, maxTokens: 4096,
-      timeoutSec: TIMEOUTS.validation
-    });
+  // ★ v7.12: 自己検証結果を先にチェック（Pass 1で生成済み）
+  // confidence_score >= 80 かつ is_solvable=true なら API検証をスキップ（0秒）
+  const selfVal = scenario._self_validation;
+  const selfValPassed = selfVal && selfVal.is_solvable && selfVal.confidence_score >= 80;
+
+  if (selfValPassed) {
+    console.log(`✅ 自己検証パス (confidence=${selfVal.confidence_score}, solvable=${selfVal.is_solvable}) → Pass 3 APIスキップ`);
+    logicResult = {
+      is_valid: true,
+      is_solvable: true,
+      reasoning_chain: selfVal.reasoning_chain || '(自己検証)',
+      alibi_check: '', timeline_check: '', red_herring_check: '',
+      evidence_match: '', fairness_check: '',
+      overall_score: selfVal.confidence_score,
+      critical_issues: [],
+      suggestions: selfVal.fix_applied ? ['自己修正あり'] : []
+    };
     scenario._logicValidation = logicResult;
     onProgress(3, 'done');
-  } catch (e) {
-    console.warn('AI論理検証エラー（スキップして続行）:', e.message);
-    logicResult = { is_valid: true, is_solvable: true, overall_score: 70, reasoning_chain: '(検証スキップ)', critical_issues: [], suggestions: [] };
-    scenario._logicValidation = logicResult;
-    onProgress(3, 'done');
+  } else {
+    // 自己検証が不十分 → AI論理検証を実行
+    console.log(`⚠️ 自己検証不十分 (confidence=${selfVal?.confidence_score || 'なし'}, solvable=${selfVal?.is_solvable ?? 'なし'}) → Pass 3 API実行`);
+    try {
+      logicResult = await callClaude({
+        apiKey, modelId,
+        system: 'あなたはミステリーシナリオの品質管理官です。論理的な矛盾を厳密にチェックしてください。',
+        userMessage: buildDeepValidationPrompt(scenario),
+        schema: DEEP_VALIDATION_SCHEMA,
+        useAdvisor: validationUseAdvisor,
+        temperature: 0.1, maxTokens: 4096,
+        timeoutSec: TIMEOUTS.validation
+      });
+      scenario._logicValidation = logicResult;
+      onProgress(3, 'done');
+    } catch (e) {
+      console.warn('AI論理検証エラー（スキップして続行）:', e.message);
+      logicResult = { is_valid: true, is_solvable: true, overall_score: 70, reasoning_chain: '(検証スキップ)', critical_issues: [], suggestions: [] };
+      scenario._logicValidation = logicResult;
+      onProgress(3, 'done');
+    }
   }
 
   // ---- Pass 3 結果処理: 不合格ならインライン・マイクロ修正 ----

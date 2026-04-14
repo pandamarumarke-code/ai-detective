@@ -295,11 +295,15 @@ export function buildScenarioSystemPrompt(themeId, difficultyId, usedNames = [],
     ? `\n## 🧬 シナリオDNA（必ずこの構造に従うこと）\n- 動機タイプ: **${dna.motive_type}**（この種類の動機を中心にシナリオを構築）\n- トリックタイプ: **${dna.trick_type}**（この手法を犯行の核にすること）\n- ツイストタイプ: **${dna.twist_type}**（この展開を物語に組み込むこと）\n`
     : '';
 
-  return `あなたは推理ゲームのシナリオライターです。以下の制約に従い、ミステリーシナリオを1つ作成してください。
+  // ============================================================
+  // Prompt Caching対応: 静的部分（キャッシュ可能）と動的部分を分離
+  // cache_control付きの配列形式でAnthropicに送信
+  // 初回: フルプロンプト処理 → 2回目以降: キャッシュヒットで高速化
+  // ============================================================
 
-## ランダムシード: ${seed}
-完全に新しいオリジナルの物語を作ってください。テンプレート的なストーリーは禁止です。
-${banList}${dnaSection}
+  // 静的部分（テーマ設定・ルール・スキーマガイド）→ キャッシュ対象
+  const staticPrompt = `あなたは推理ゲームのシナリオライターです。以下の制約に従い、ミステリーシナリオを1つ作成してください。
+
 ## テーマ: ${theme.name}（${theme.description}）
 - 舞台候補: ${theme.locations.join('、')}
 - 雰囲気: ${theme.mood}
@@ -338,8 +342,32 @@ ${banList}${dnaSection}
 - ヒント3段階（方向性→絞り込み→ほぼ正解）
 - 回答: 犯人(3点)+動機(2点)+手口(2点)=合計7点
 
-## 自己検証
-生成後、solution.culprit/motive_detail/method_detailのキーワードがカードから推論可能か確認し、不足なら追加してから出力。`;
+## 🔍 自己検証（生成後に必ず実行）
+シナリオ生成後、以下の4項目を_self_validationフィールドに記録してください:
+1. **is_solvable**: 手がかりカードの情報だけで犯人を論理的に特定できるか (true/false)
+2. **reasoning_chain**: 「証拠A→推論→証拠B→推論→犯人はXである」形式の推論チェーン
+3. **confidence_score**: 推理の確信度 (0-100)。80以上なら合格。
+4. **fix_applied**: 不足を発見して修正したか (true/false)
+
+solution.culprit/motive_detail/method_detailのキーワードがカードから推論可能か確認し、不足なら追加してから出力。`;
+
+  // 動的部分（毎回変わる）→ キャッシュ対象外
+  const dynamicPrompt = `## ランダムシード: ${seed}
+完全に新しいオリジナルの物語を作ってください。テンプレート的なストーリーは禁止です。
+${banList}${dnaSection}`;
+
+  // Prompt Caching配列形式で返す
+  return [
+    {
+      type: 'text',
+      text: staticPrompt,
+      cache_control: { type: 'ephemeral' }
+    },
+    {
+      type: 'text',
+      text: dynamicPrompt
+    }
+  ];
 }
 
 /**
@@ -463,7 +491,7 @@ export const SCENARIO_SCHEMA = {
   strict: true,
   schema: {
     type: 'object',
-    required: ['title', 'setting', 'introduction', 'victim', 'suspects', 'investigation_phases', 'culprit_flashbacks', 'solution', 'questions', 'full_story', 'hints'],
+    required: ['title', 'setting', 'introduction', 'victim', 'suspects', 'investigation_phases', 'culprit_flashbacks', 'solution', 'questions', 'full_story', 'hints', '_self_validation'],
     additionalProperties: false,
     properties: {
       title: { type: 'string', description: '事件名（20文字以内）' },
@@ -593,6 +621,18 @@ export const SCENARIO_SCHEMA = {
             text: { type: 'string' },
             penalty: { type: 'integer' }
           }
+        }
+      },
+      _self_validation: {
+        type: 'object',
+        description: 'AIによる自己検証結果',
+        required: ['is_solvable', 'reasoning_chain', 'confidence_score', 'fix_applied'],
+        additionalProperties: false,
+        properties: {
+          is_solvable: { type: 'boolean', description: '手がかりだけで犯人特定可能か' },
+          reasoning_chain: { type: 'string', description: '証拠→推論→結論の推理チェーン' },
+          confidence_score: { type: 'integer', description: '推理確信度 0-100' },
+          fix_applied: { type: 'boolean', description: '不足を発見して修正したか' }
         }
       }
     }
