@@ -1,8 +1,7 @@
 {
   "functions": {
     "api/anthropic.js": {
-      "maxDuration": 300,
-      "supportsResponseStreaming": true
+      "maxDuration": 300
     },
     "api/gemini.js": {
       "maxDuration": 300
