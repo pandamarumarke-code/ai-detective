@@ -41,7 +41,7 @@ const API_URL = isLocal ? 'http://127.0.0.1:3457/proxy/anthropic' : '/api/anthro
 // タイムアウト設定（秒）
 // ================================================
 const TIMEOUTS = {
-  scenarioGeneration: 240, // Pass 1: シナリオ生成（最も重い）
+  scenarioGeneration: 300, // Pass 1: シナリオ生成（Edge Function上限に合わせる）
   validation: 120,         // Pass 3/4: 検証パス
   solvability: 90,         // Pass 5: 解答チェーン
   scoring: 60              // 採点
@@ -54,9 +54,10 @@ const TIMEOUTS = {
 /**
  * Anthropic SSEストリームを読み取り、最終JSONを組み立てる
  * @param {ReadableStream} body - fetchレスポンスのbody
+ * @param {Function} [onChunkReceived] - チャンク受信時のコールバック（アイドルタイムアウトリセット用）
  * @returns {Promise<Object>} パース済みレスポンスオブジェクト（Messages API形式）
  */
-async function parseAnthropicStream(body) {
+async function parseAnthropicStream(body, onChunkReceived) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
 
@@ -85,6 +86,9 @@ async function parseAnthropicStream(body) {
         if (!line.startsWith('data: ')) continue;
         const dataStr = line.slice(6).trim();
         if (dataStr === '[DONE]') continue;
+
+        // アイドルタイムアウトリセット（チャンク受信時）
+        if (typeof onChunkReceived === 'function') onChunkReceived();
 
         let event;
         try {
@@ -227,10 +231,25 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   }
 
   // AbortController でタイムアウト制御
+  // タイムアウト制御: ストリーミング時はアイドルタイムアウト（チャンク間隔）
+  // 非ストリーミング時は従来の累計タイムアウト
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeoutSec * 1000);
+  const IDLE_TIMEOUT_MS = 60000; // ストリーミング中のアイドル上限: 60秒
+  let timeoutId;
+
+  if (useStreaming) {
+    // ストリーミング: アイドルタイムアウト（チャンク受信間隔で判定）
+    timeoutId = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+  } else {
+    // 非ストリーミング: 累計タイムアウト
+    timeoutId = setTimeout(() => controller.abort(), timeoutSec * 1000);
+  }
+
+  // アイドルタイムアウトリセット関数（ストリーミング中にチャンク受信するたびに呼ばれる）
+  const resetIdleTimeout = () => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+  };
 
   let response;
   try {
@@ -261,11 +280,11 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
     throw new Error(`Claude API Error (${response.status}): ${errMsg}`);
   }
 
-  // ストリーミングレスポンスの場合: SSEをパース
+  // ストリーミングレスポンスの場合: SSEをパース（アイドルタイムアウトリセット付き）
   let data;
   try {
     if (useStreaming && response.body) {
-      data = await parseAnthropicStream(response.body);
+      data = await parseAnthropicStream(response.body, resetIdleTimeout);
     } else {
       data = await response.json();
     }
