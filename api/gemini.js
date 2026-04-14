@@ -1,62 +1,85 @@
 // ================================================
 // @ai-spec
 // @module    api/gemini
-// @purpose   Vercel Serverless Function — Google Gemini API へのCORSプロキシ
-// @depends   なし（Node.js built-in のみ）
+// @purpose   Vercel Edge Function — Google Gemini API へのCORSプロキシ
+// @depends   なし（Web標準API のみ）
 // @consumers js/gemini.js (ブラウザから /api/gemini にPOST)
 // @constraints
-//   - maxDuration: 300s（Fluid Compute有効）でタイムアウト回避
+//   - Edge Runtime: 初回レスポンス25秒以内、ストリーミング最大300秒
 //   - BYOKモード: クエリパラメータ key= でクライアントのキーを受け取る
 //   - 無料モード: key=FREE → 環境変数 GEMINI_API_KEY を使用
 // @dataflow  ブラウザ → /api/gemini?model=xxx&key=yyy → Google API → ブラウザ
 // @updated   2026-04-14
 // ================================================
 
-export default async function handler(req, res) {
-  // CORS ヘッダー
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+export const config = {
+  runtime: 'edge'
+};
 
+// CORSヘッダー共通定義
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+
+export default async function handler(request) {
   // プリフライト
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: CORS_HEADERS });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
   }
 
   try {
-    const { model } = req.query;
-    let apiKey = req.query.key;
+    const url = new URL(request.url);
+    const model = url.searchParams.get('model');
+    let apiKey = url.searchParams.get('key');
 
     // 無料モード: key=FREE → サーバー環境変数を使用
     if (!apiKey || apiKey === 'FREE') {
       apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(503).json({ error: '無料プレイ用のGemini APIキーが設定されていません' });
+        return new Response(
+          JSON.stringify({ error: '無料プレイ用のGemini APIキーが設定されていません' }),
+          { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
     if (!model) {
-      return res.status(400).json({ error: 'Model name is required (?model=xxx)' });
+      return new Response(
+        JSON.stringify({ error: 'Model name is required (?model=xxx)' }),
+        { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Google Gemini APIにリクエスト転送
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const response = await fetch(url, {
+    const body = await request.json();
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(body)
     });
 
     const data = await response.json();
-    return res.status(response.status).json(data);
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
     console.error('Gemini proxy error:', error);
-    return res.status(500).json({ error: 'Proxy error', message: error.message });
+    return new Response(
+      JSON.stringify({ error: 'Proxy error', message: error.message }),
+      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+    );
   }
 }

@@ -374,7 +374,7 @@ async function runPipeline({ apiKey, modelId, theme, difficulty, advisorEnabled,
       useAdvisor: advisorEnabled,
       advisorMaxUses: ADVISOR_CONFIG.maxUsesPerCall.scenarioGeneration,
       temperature: 0.9 + (attempt * 0.05),
-      maxTokens: 8192,
+      maxTokens: 4096,
       timeoutSec: TIMEOUTS.scenarioGeneration
     });
     onProgress(1, 'done');
