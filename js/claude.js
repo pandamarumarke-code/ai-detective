@@ -316,7 +316,29 @@ async function callClaude({ apiKey, modelId, system, userMessage, schema, temper
   const textBlocks = (data.content || []).filter(b => b.type === 'text' && b.text?.trim());
   const textBlock = textBlocks[textBlocks.length - 1];
   if (!textBlock?.text) {
-    throw new Error('Claude APIレスポンスにテキストが含まれていません');
+    // 診断ログ: 何が返ってきたか記録
+    const blockTypes = (data.content || []).map(b => `${b.type}(${(b.text || '').length}文字)`).join(', ');
+    console.error('❌ テキストブロック空 - contentブロック:', blockTypes);
+    console.error('❌ stop_reason:', data.stop_reason, '/ model:', data.model);
+    console.error('❌ data.content全体:', JSON.stringify(data.content || [], null, 2).substring(0, 500));
+
+    // フォールバック: 全ブロックのテキストを結合してJSON抽出を試みる
+    const allText = (data.content || [])
+      .filter(b => b.text)
+      .map(b => b.text)
+      .join('');
+    if (allText.includes('{') && allText.includes('}')) {
+      console.warn('⚠️ フォールバック: 全ブロックテキストからJSON抽出を試行');
+      const fbMatch = allText.match(/\{[\s\S]*\}/);
+      if (fbMatch) {
+        try {
+          return JSON.parse(fbMatch[0]);
+        } catch (fbErr) {
+          console.warn('⚠️ フォールバックJSON抽出失敗:', fbErr.message);
+        }
+      }
+    }
+    throw new Error('Claude APIレスポンスにテキストが含まれていません（ブロック: ' + blockTypes + '）');
   }
 
   const text = textBlock.text;
