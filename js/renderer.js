@@ -981,16 +981,19 @@ export function renderPresetList(presets, onSelect) {
     const introPreview = preset.introduction.substring(0, 80) + '…';
 
     card.innerHTML = `
-      <div class="preset-card-header">
-        <span class="preset-theme-icon">${themeIcon}</span>
-        <span class="preset-difficulty">${stars} ${diffLabel}</span>
-      </div>
-      <h3 class="preset-card-title">${escapeHTML(preset.title)}</h3>
-      <p class="preset-card-setting">${escapeHTML(preset.setting.location)}</p>
-      <p class="preset-card-preview">${escapeHTML(introPreview)}</p>
-      <div class="preset-card-footer">
-        <span class="preset-suspects">👤 容疑者${preset.suspects.length}人</span>
-        <span class="preset-phases">📋 ${preset.investigation_phases.length}幕構成</span>
+      ${preset.scene_image ? `<div class="preset-card-image" style="background-image: url('${preset.scene_image}')"></div>` : ''}
+      <div class="preset-card-body">
+        <div class="preset-card-header">
+          <span class="preset-theme-icon">${themeIcon}</span>
+          <span class="preset-difficulty">${stars} ${diffLabel}</span>
+        </div>
+        <h3 class="preset-card-title">${escapeHTML(preset.title)}</h3>
+        <p class="preset-card-setting">${escapeHTML(preset.setting.location)}</p>
+        <p class="preset-card-preview">${escapeHTML(introPreview)}</p>
+        <div class="preset-card-footer">
+          <span class="preset-suspects">👤 容疑者${preset.suspects.length}人</span>
+          <span class="preset-phases">📋 ${preset.investigation_phases.length}幕構成</span>
+        </div>
       </div>
     `;
 
