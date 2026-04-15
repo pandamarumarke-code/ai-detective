@@ -1,5 +1,20 @@
 # AI探偵団 Changelog
 
+## 2026-04-16 00:35 — v7.4 デバッグモードにモック画像追加
+- **ステータス**: ✅ 完了（デプロイ済み・検証済み）
+- **追加画像**:
+  - `img/debug/scene.png` — 洋館の展示室（シーン画像）
+  - `img/debug/sato_hanako.png` — 佐藤花子（32歳・秘書）
+  - `img/debug/suzuki_ichiro.png` — 鈴木一郎（45歳・宝石鑑定士）
+  - `img/debug/tanaka_misaki.png` — 田中美咲（28歳・姪）
+  - `img/debug/takahashi_kenta.png` — 高橋健太（50歳・警備員）
+- **変更ファイル**:
+  - `img/debug/` (新規) — デバッグ用静的画像5枚
+  - `js/debug.js` — `loadMockImages()`: 静的画像をfetch→Base64変換
+  - `js/app.js` — デバッグモード生成時にloadMockImages()→imageCache連携
+- **変更ファイル数**: 7ファイル（75行追加）
+- **Git**: `e19d086` main → Vercel自動デプロイ（Ready確認済み）
+
 ## 2026-04-14 11:15 — v7.3 デバッグモード追加 + Gemini画像生成エラー修正（CWFモデル）
 - **ステータス**: ✅ 完了（デプロイ済み・検証済み）
 - **CWFフェーズ**: Phase 0(AI_CONTEXT.md更新) → 1(計画) → 2(V1/V2/V3全PASS) → 4(実装) → 6(デプロイ) → 7(コンテキスト更新)

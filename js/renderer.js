@@ -769,11 +769,18 @@ export function renderSuspectList() {
     const div = document.createElement('div');
     div.className = 'suspect-item';
 
-    // ポートレート画像
-    const portraitBase64 = portraits[sus.name];
-    const portraitHtml = portraitBase64
-      ? `<div class="suspect-portrait"><img src="data:image/png;base64,${portraitBase64}" alt="${escapeHTML(sus.name)}" /></div>`
-      : `<div class="suspect-portrait-placeholder">👤</div>`;
+    // ポートレート画像（Base64またはURLパスに対応）
+    const portraitData = portraits[sus.name] || sus.portrait_image;
+    let portraitHtml;
+    if (portraitData) {
+      // Base64かURLパスかを判定（200文字以上はBase64とみなす）
+      const imgSrc = portraitData.startsWith('data:') || portraitData.length > 200
+        ? `data:image/png;base64,${portraitData}`
+        : portraitData;
+      portraitHtml = `<div class="suspect-portrait"><img src="${imgSrc}" alt="${escapeHTML(sus.name)}" /></div>`;
+    } else {
+      portraitHtml = `<div class="suspect-portrait-placeholder">👤</div>`;
+    }
 
     div.innerHTML = `
       <div style="display:flex;gap:12px;align-items:flex-start;">

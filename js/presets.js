@@ -44,7 +44,8 @@ export const PRESET_SCENARIOS = [
       personality: '知的で冷静だが、感情を見せない',
       motive: '遺産相続（推定30億円）',
       alibi: '「キッチンでデザートの盛り付けを手伝っていました」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-01-shiraishi.png'
     },
     {
       name: '黒沢大輝',
@@ -54,7 +55,8 @@ export const PRESET_SCENARIOS = [
       personality: '感情的で衝動的',
       motive: '父の「重大な発表」が遺産の全額寄付だと知り激怒',
       alibi: '「書斎で電話をしていました」',
-      is_culprit: true
+      is_culprit: true,
+      portrait_image: 'img/presets/preset-01-kurosawa.png'
     },
     {
       name: '南條恵美',
@@ -64,7 +66,8 @@ export const PRESET_SCENARIOS = [
       personality: '忠実だが秘密を抱えている',
       motive: '解雇の通告を受けていた',
       alibi: '「ワインセラーでワインを選んでいました」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-01-nanjo.png'
     },
     {
       name: '氷室弁護士',
@@ -74,7 +77,8 @@ export const PRESET_SCENARIOS = [
       personality: '論理的で寡黙',
       motive: '黒沢の不正経理を隠蔽する必要があった',
       alibi: '「応接間で書類を確認していました」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-01-himuro.png'
     }
   ],
   investigation_phases: [
@@ -172,7 +176,8 @@ export const PRESET_SCENARIOS = [
       personality: '熱血で面倒見が良い',
       motive: '部の予算削減に対する抗議のため話題作り',
       alibi: '「グラウンドで文化祭の設営を指導していた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-02-yamato.png'
     },
     {
       name: '神崎美月',
@@ -182,7 +187,8 @@ export const PRESET_SCENARIOS = [
       personality: '完璧主義で責任感が強い',
       motive: '文化祭メインイベントの注目度を上げるため',
       alibi: '「生徒会室で文化祭の最終打ち合わせをしていた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-02-kanzaki.png'
     },
     {
       name: '岩井隼人',
@@ -192,7 +198,8 @@ export const PRESET_SCENARIOS = [
       personality: '責任感は強いがプレッシャーに弱い',
       motive: '借金返済のためトロフィーの純金台座を売却しようとした',
       alibi: '「部室で明日のデモンストレーション練習をしていた」',
-      is_culprit: true
+      is_culprit: true,
+      portrait_image: 'img/presets/preset-02-iwai.png'
     },
     {
       name: '松本義男',
@@ -202,7 +209,8 @@ export const PRESET_SCENARIOS = [
       personality: '寡黙で几帳面',
       motive: '定年退職前に長年の恨みを晴らす',
       alibi: '「校舎内の清掃と施錠確認をしていた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-02-matsumoto.png'
     }
   ],
   investigation_phases: [
@@ -300,7 +308,8 @@ export const PRESET_SCENARIOS = [
       personality: '天才的だが孤高',
       motive: '実験結果を独占するため延期を画策',
       alibi: '「ラボBで最終シミュレーションを実行していた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-03-takano.png'
     },
     {
       name: 'コマンダー・陳偉立',
@@ -310,7 +319,8 @@ export const PRESET_SCENARIOS = [
       personality: '規律に厳格',
       motive: '安全基準違反によるミッションの中止を求めていた',
       alibi: '「コントロールルームで地球との定時交信中だった」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-03-chen.png'
     },
     {
       name: 'エンジニア・藤堂拓海',
@@ -320,7 +330,8 @@ export const PRESET_SCENARIOS = [
       personality: '内向的だが技術は一流',
       motive: '競合企業からの産業スパイ依頼を受けていた',
       alibi: '「サーバールームでADAMのメンテナンス中だった」',
-      is_culprit: true
+      is_culprit: true,
+      portrait_image: 'img/presets/preset-03-todo.png'
     },
     {
       name: 'ドクター・パク・ジヨン',
@@ -330,7 +341,8 @@ export const PRESET_SCENARIOS = [
       personality: '温厚だが秘密主義',
       motive: '実験の安全性への懸念',
       alibi: '「医療モジュールで乗員の健康データを分析していた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-03-park.png'
     }
   ],
   investigation_phases: [
@@ -428,7 +440,8 @@ export const PRESET_SCENARIOS = [
       personality: '気位が高く完璧主義',
       motive: '家元の座を巡る父との対立',
       alibi: '「自室で書道の練習をしていた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-04-kisaragi-m.png'
     },
     {
       name: '堀川泰三',
@@ -438,7 +451,8 @@ export const PRESET_SCENARIOS = [
       personality: '穏やかだが芯が強い',
       motive: '破門の撤回。宗匠がいなくなれば新家元に推薦される可能性',
       alibi: '「離れの茶室で道具の後片付けをしていた」',
-      is_culprit: true
+      is_culprit: true,
+      portrait_image: 'img/presets/preset-04-horikawa.png'
     },
     {
       name: '三条楓',
@@ -448,7 +462,8 @@ export const PRESET_SCENARIOS = [
       personality: '柔和だがしたたか',
       motive: '宗匠が旅館への茶会場所変更を示唆していた',
       alibi: '「帳場で翌日の準備をしていた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-04-sanjo.png'
     },
     {
       name: '如月翠',
@@ -458,7 +473,8 @@ export const PRESET_SCENARIOS = [
       personality: '無邪気だが観察力が鋭い',
       motive: '遺産相続の前倒し',
       alibi: '「庭を散歩してから自室に戻った」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-04-kisaragi-s.png'
     }
   ],
   investigation_phases: [
@@ -556,7 +572,8 @@ export const PRESET_SCENARIOS = [
       personality: '威圧的で短気',
       motive: '藤原が仲介手数料を水増しし、差額を着服していたことへの怒り',
       alibi: '「自分のクラブで営業していた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-05-kito.png'
     },
     {
       name: '朱美',
@@ -566,7 +583,8 @@ export const PRESET_SCENARIOS = [
       personality: '妖艶で計算高い',
       motive: '藤原が自分の過去のスキャンダルを暴露すると脅していた',
       alibi: '「店を閉めた後、自宅で寝ていた」',
-      is_culprit: true
+      is_culprit: true,
+      portrait_image: 'img/presets/preset-05-akemi.png'
     },
     {
       name: '王建明',
@@ -576,7 +594,8 @@ export const PRESET_SCENARIOS = [
       personality: '温和に見えるが冷酷',
       motive: 'マネーロンダリングの証拠を藤原に握られていた',
       alibi: '「店の仕込みをしていた」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-05-wang.png'
     },
     {
       name: '真島健吾',
@@ -586,7 +605,8 @@ export const PRESET_SCENARIOS = [
       personality: '冷静だが正義感の残滓がある',
       motive: '買い手の秘密が藤原の暴露で露呈することへの恐怖',
       alibi: '「車で張り込み調査中だった」',
-      is_culprit: false
+      is_culprit: false,
+      portrait_image: 'img/presets/preset-05-mashima.png'
     }
   ],
   investigation_phases: [
@@ -667,10 +687,10 @@ export const PRESET_SCENARIOS = [
   introduction: '王立魔法学院「アルカナ」。大陸最高峰の魔法使いを輩出するこの学院の宝物庫から、創設者が遺した至宝「竜の涙」が盗まれた。竜の涙は並の魔法使いが一生かけても得られないほどの魔力を結晶化した宝珠であり、悪用されれば一つの都市を滅ぼすこともできる。\n\n宝物庫には五重の魔法的封印が施されている。第一から第四の封印は学院の四つの学科長がそれぞれの魔法で解除する方式で、全員が同時に唱えなければ開かない。しかし第五の封印だけは「意志の鍵」と呼ばれ、特定の者の魔力波長にのみ反応する。\n\n事件当夜、四人の学科長は満月の祝祭で宝物庫に集まり、年に一度の儀式を行った。竜の涙のエネルギーを学院の結界に充填するためだ。儀式の後、宝珠を戻して封印したはずだった。翌朝、宝物庫を確認すると竜の涙は消えていた。\n\nあなたは学院の調査官として、四人の学科長の中から犯人を特定しなければならない。誰が五重の封印を破って宝珠を持ち出したのか。',
   victim: { name: '王立魔法学院', age: 0, role: '学院（被害組織）', cause_of_death: '至宝「竜の涙」の盗難' },
   suspects: [
-    { name: 'エルダーラ・フィン', age: 120, role: '召喚学科長（エルフ）', relationship: '学院最古参の教授', personality: '穏やかだが時に冷酷', motive: '竜の涙のエネルギーで故郷のエルフの森を再生したい', alibi: '「儀式後、天文台で星の観察をしていた」', is_culprit: false },
-    { name: 'グロム・アイアンフォージ', age: 85, role: '錬金学科長（ドワーフ）', relationship: '宝物庫の物理的な鍵の管理者', personality: '頑固だが正直', motive: '竜の涙を使った究極の錬金実験への執着', alibi: '「地下工房で新しい合金の実験をしていた」', is_culprit: false },
-    { name: 'セレナ・ムーンライト', age: 35, role: '幻術学科長（人間）', relationship: '最年少の学科長、野心家', personality: '魅力的だが計算高い', motive: '竜の涙の力で大魔術師の称号を得る', alibi: '「図書館で古文書の研究をしていた」', is_culprit: true },
-    { name: 'バルド・サンダーボルト', age: 60, role: '戦闘魔法学科長（人間）', relationship: '学院長候補の実力者', personality: '豪快で正義感が強い', motive: '国境紛争に竜の涙の力を使いたい', alibi: '「訓練場で夜間訓練を指導していた」', is_culprit: false }
+    { name: 'エルダーラ・フィン', age: 120, role: '召喚学科長（エルフ）', relationship: '学院最古参の教授', personality: '穏やかだが時に冷酷', motive: '竜の涙のエネルギーで故郷のエルフの森を再生したい', alibi: '「儀式後、天文台で星の観察をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-06-eldara.png' },
+    { name: 'グロム・アイアンフォージ', age: 85, role: '錬金学科長（ドワーフ）', relationship: '宝物庫の物理的な鍵の管理者', personality: '頑固だが正直', motive: '竜の涙を使った究極の錬金実験への執着', alibi: '「地下工房で新しい合金の実験をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-06-grom.png' },
+    { name: 'セレナ・ムーンライト', age: 35, role: '幻術学科長（人間）', relationship: '最年少の学科長、野心家', personality: '魅力的だが計算高い', motive: '竜の涙の力で大魔術師の称号を得る', alibi: '「図書館で古文書の研究をしていた」', is_culprit: true, portrait_image: 'img/presets/preset-06-serena.png' },
+    { name: 'バルド・サンダーボルト', age: 60, role: '戦闘魔法学科長（人間）', relationship: '学院長候補の実力者', personality: '豪快で正義感が強い', motive: '国境紛争に竜の涙の力を使いたい', alibi: '「訓練場で夜間訓練を指導していた」', is_culprit: false, portrait_image: 'img/presets/preset-06-baldo.png' }
   ],
   investigation_phases: [
     {
@@ -741,10 +761,10 @@ export const PRESET_SCENARIOS = [
   introduction: '年末年始の休暇を過ごすため、時計塔ホテル「クロノス」に集まった四人の客と一人の支配人。標高1200メートルの山奥に建つこのホテルは、百年前の時計職人が建てた時計塔を中心に据えた独特の建築物だった。\n\n大晦日の夜、猛吹雪が山を包み、道路は完全に閉ざされた。そして新年を迎えた午前零時、時計塔の鐘が十二回鳴り響いた直後、ホテルの支配人・巌克己がロビーで刺殺体となって発見された。凶器はロビーに飾られていた装飾用のレターオープナーだった。\n\n吹雪で警察は来られない。通信も途絶えている。四人の宿泊客の中に殺人犯がいる。しかし全員が「時計塔の鐘の音を聞いた時は自分の部屋にいた」と主張している。検死によると死亡推定時刻は23時45分から0時の間。わずか15分の出来事だ。\n\nたまたま推理作家であったあなたは、現実の殺人事件に直面する。時計塔の鐘の音がすべてを知っている。',
   victim: { name: '巌克己', age: 60, role: 'ホテル支配人', cause_of_death: 'レターオープナーによる刺殺' },
   suspects: [
-    { name: '乾真理子', age: 45, role: '美術商', relationship: '常連客', personality: '洗練されているが傲慢', motive: '支配人に贋作売買の秘密を握られていた', alibi: '「部屋でワインを飲んでいた」', is_culprit: false },
-    { name: '津田恭介', age: 50, role: '時計修理師', relationship: '時計塔のメンテナンス担当', personality: '職人気質で寡黙', motive: '支配人がメンテナンス契約を打ち切ろうとしていた', alibi: '「時計塔の修理作業中だった」', is_culprit: true },
-    { name: '望月彩花', age: 28, role: 'フリーライター', relationship: '初めての宿泊客', personality: '好奇心旺盛で行動的', motive: 'ホテルの不正経理を記事にしようとしていた', alibi: '「部屋で原稿を書いていた」', is_culprit: false },
-    { name: '阿久津勇', age: 55, role: '退職した銀行員', relationship: '年に一度の常連客', personality: '穏やかだが神経質', motive: '支配人との古い金銭トラブル', alibi: '「ラウンジで読書をしていた」', is_culprit: false }
+    { name: '乾真理子', age: 45, role: '美術商', relationship: '常連客', personality: '洗練されているが傲慢', motive: '支配人に贋作売買の秘密を握られていた', alibi: '「部屋でワインを飲んでいた」', is_culprit: false, portrait_image: 'img/presets/preset-07-inui.png' },
+    { name: '津田恭介', age: 50, role: '時計修理師', relationship: '時計塔のメンテナンス担当', personality: '職人気質で寡黙', motive: '支配人がメンテナンス契約を打ち切ろうとしていた', alibi: '「時計塔の修理作業中だった」', is_culprit: true, portrait_image: 'img/presets/preset-07-tsuda.png' },
+    { name: '望月彩花', age: 28, role: 'フリーライター', relationship: '初めての宿泊客', personality: '好奇心旺盛で行動的', motive: 'ホテルの不正経理を記事にしようとしていた', alibi: '「部屋で原稿を書いていた」', is_culprit: false, portrait_image: 'img/presets/preset-07-mochizuki.png' },
+    { name: '阿久津勇', age: 55, role: '退職した銀行員', relationship: '年に一度の常連客', personality: '穏やかだが神経質', motive: '支配人との古い金銭トラブル', alibi: '「ラウンジで読書をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-07-akutsu.png' }
   ],
   investigation_phases: [
     {
@@ -815,10 +835,10 @@ export const PRESET_SCENARIOS = [
   introduction: '県立桜丘高校の演劇部は、来月の県大会に向けて新作「罪と告白」の稽古に励んでいた。主役の座を巡る競争は激しく、部員たちの間には見えない緊張が走っていた。\n\n放課後の部室に、一通の告発状が貼り出された。「主役の相馬遥は、昨年の大会で審査員の教師に裏口で推薦してもらっていた。その教師こそ顧問の長谷川先生だ」。この告発が事実なら、相馬は主役を降ろされ、長谷川先生は処分を受ける。\n\n相馬遥は涙ながらに全面否定し、長谷川先生も「事実無根だ」と怒りを露わにした。しかし告発状には具体的な日時と場所が記されており、単なるいたずらとは思えない。便箋は部室にある共用のもので、文字はパソコンで印刷されていた。\n\n演劇部の副顧問を務めるあなたは、大会までに真実を明らかにしなければならない。告発状を書いたのは誰か。その目的は何か。嘘の中に隠された真実を見つけ出せ。',
   victim: { name: '相馬遥', age: 17, role: '演劇部主役', cause_of_death: '名誉毀損（虚偽の告発状による被害）' },
   suspects: [
-    { name: '柏木蓮', age: 17, role: '演劇部副部長', relationship: '主役の座を狙うライバル', personality: '努力家だが嫉妬深い', motive: '相馬を降板させて自分が主役になりたい', alibi: '「音楽室でセリフの練習をしていた」', is_culprit: true },
-    { name: '小野寺理沙', age: 16, role: '演劇部の新入部員', relationship: '相馬に憧れる後輩', personality: '大人しいが芯が強い', motive: '相馬が自分のアイデアを盗用したことへの不満', alibi: '「図書室で脚本の参考資料を探していた」', is_culprit: false },
-    { name: '藤井翔太', age: 17, role: '演劇部の照明担当', relationship: '相馬の元恋人', personality: '陽気だが未練がある', motive: '相馬に振られた恨み', alibi: '「体育館で照明機材の点検をしていた」', is_culprit: false },
-    { name: '渡辺さくら', age: 17, role: '演劇部の脚本担当', relationship: '柏木の親友', personality: '知的で冷静', motive: '親友の柏木を主役にしたい', alibi: '「部室の隣の教室で脚本を書いていた」', is_culprit: false }
+    { name: '柏木蓮', age: 17, role: '演劇部副部長', relationship: '主役の座を狙うライバル', personality: '努力家だが嫉妬深い', motive: '相馬を降板させて自分が主役になりたい', alibi: '「音楽室でセリフの練習をしていた」', is_culprit: true, portrait_image: 'img/presets/preset-08-kashiwagi.png' },
+    { name: '小野寺理沙', age: 16, role: '演劇部の新入部員', relationship: '相馬に憧れる後輩', personality: '大人しいが芯が強い', motive: '相馬が自分のアイデアを盗用したことへの不満', alibi: '「図書室で脚本の参考資料を探していた」', is_culprit: false, portrait_image: 'img/presets/preset-08-onodera.png' },
+    { name: '藤井翔太', age: 17, role: '演劇部の照明担当', relationship: '相馬の元恋人', personality: '陽気だが未練がある', motive: '相馬に振られた恨み', alibi: '「体育館で照明機材の点検をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-08-fujii.png' },
+    { name: '渡辺さくら', age: 17, role: '演劇部の脚本担当', relationship: '柏木の親友', personality: '知的で冷静', motive: '親友の柏木を主役にしたい', alibi: '「部室の隣の教室で脚本を書いていた」', is_culprit: false, portrait_image: 'img/presets/preset-08-watanabe.png' }
   ],
   investigation_phases: [
     {
@@ -889,10 +909,10 @@ export const PRESET_SCENARIOS = [
   introduction: '人口三千人の小さな町、美里町。毎年お盆に催される天照宮の夏祭りは、町最大の行事だ。今年の祭りの目玉は、町の名士・吉岡源造が寄贈した純金の御神体「天照の鏡」のお披露目だった。時価二千万円を超えるこの鏡は、祭りの翌日に正式に神社へ奉納される予定だった。\n\n祭りの夜、境内の本殿に安置されていた天照の鏡が消えた。本殿の扉には鍵がかかっており、鍵を持つのは四人。宮司の佐久間、氏子総代の吉岡（寄贈者本人）、巫女頭の千歳、そして祭り実行委員長の村上だ。\n\n祭囃子が鳴り響き、屋台の明かりが境内を照らす中で起きた大胆な犯行。祭りの喧騒に紛れて、誰が鏡を持ち出したのか。あなたは町の駐在さんとして、祭りが終わる前にこの事件を解決しなければならない。\n\n小さな町では秘密は長く隠せない。しかし、祭りの夜だけは誰もが仮面をかぶっている。',
   victim: { name: '天照宮', age: 0, role: '神社（被害組織）', cause_of_death: '純金御神体「天照の鏡」の盗難' },
   suspects: [
-    { name: '佐久間正', age: 65, role: '宮司', relationship: '神社の管理者', personality: '温厚で信望が厚い', motive: '本殿の修繕費用が不足しており、鏡を売って充当したかった', alibi: '「祭りの神事を執り行っていた」', is_culprit: false },
-    { name: '吉岡源造', age: 70, role: '町の名士・寄贈者', relationship: '鏡の元の持ち主', personality: '豪快で見栄っ張り', motive: '実は事業が傾いており、保険金目当ての自作自演', alibi: '「来賓席で接待をしていた」', is_culprit: false },
-    { name: '千歳舞', age: 22, role: '巫女頭', relationship: '佐久間宮司の孫娘', personality: '真面目だが内に秘めた不満がある', motive: '祖父への反発と金銭的困窮', alibi: '「神楽の舞を奉納していた」', is_culprit: false },
-    { name: '村上達也', age: 45, role: '祭り実行委員長', relationship: '町役場の職員', personality: '几帳面だが金遣いが荒い', motive: 'ギャンブルの借金返済が急務', alibi: '「祭りの運営で境内を巡回していた」', is_culprit: true }
+    { name: '佐久間正', age: 65, role: '宮司', relationship: '神社の管理者', personality: '温厚で信望が厚い', motive: '本殿の修繕費用が不足しており、鏡を売って充当したかった', alibi: '「祭りの神事を執り行っていた」', is_culprit: false, portrait_image: 'img/presets/preset-09-sakuma.png' },
+    { name: '吉岡源造', age: 70, role: '町の名士・寄贈者', relationship: '鏡の元の持ち主', personality: '豪快で見栄っ張り', motive: '実は事業が傾いており、保険金目当ての自作自演', alibi: '「来賓席で接待をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-09-yoshioka.png' },
+    { name: '千歳舞', age: 22, role: '巫女頭', relationship: '佐久間宮司の孫娘', personality: '真面目だが内に秘めた不満がある', motive: '祖父への反発と金銭的困窮', alibi: '「神楽の舞を奉納していた」', is_culprit: false, portrait_image: 'img/presets/preset-09-chitose.png' },
+    { name: '村上達也', age: 45, role: '祭り実行委員長', relationship: '町役場の職員', personality: '几帳面だが金遣いが荒い', motive: 'ギャンブルの借金返済が急務', alibi: '「祭りの運営で境内を巡回していた」', is_culprit: true, portrait_image: 'img/presets/preset-09-murakami.png' }
   ],
   investigation_phases: [
     {
@@ -963,10 +983,10 @@ export const PRESET_SCENARIOS = [
   introduction: '歌舞伎町の雑居ビル五階。高級クラブ「エデン」のVIPルームで、IT企業社長の三上雄一が飲み物に混入された薬物により意識不明で発見された。一命は取り留めたものの、三上のスマートフォンとカバンに入っていた新規事業の機密データUSBが盗まれていた。\n\n三上は意識を失う前に、部屋にいた四人の名前を呟いた。ホステスの麗華、マネージャーの北条、取引先の園田、そしてバーテンダーの霧島。全員がVIPルームに出入りしていた人物だ。\n\n防犯カメラの映像には、VIPルーム前の廊下を行き来する四人が映っているが、ルーム内にカメラはない。三上が薬物を盛られた正確な時刻も、USBを盗んだのが誰かも特定できていない。\n\n裏社会に通じた元刑事のあなたは、この夜の繁華街の闇に潜む真実を暴かなければならない。クラブの華やかさの裏に、誰の嘘が隠れているのか。',
   victim: { name: '三上雄一', age: 42, role: 'IT企業「ミカミテック」社長', cause_of_death: '飲み物への薬物混入による昏睡 + 機密USBの窃盗' },
   suspects: [
-    { name: '麗華', age: 27, role: 'No.1ホステス', relationship: '三上の指名ホステス', personality: '妖艶で知的', motive: '三上が他のホステスに乗り換えようとしていた', alibi: '「VIPルームで三上さんの接客をしていた」', is_culprit: false },
-    { name: '北条修', age: 48, role: 'クラブのマネージャー', relationship: '店の運営管理者', personality: '冷静で抜け目がない', motive: '経営難の店の資金不足を補いたい', alibi: '「ホール全体の管理をしていた」', is_culprit: false },
-    { name: '園田光一', age: 50, role: '取引先の社長', relationship: '三上の競合他社の社長', personality: '穏やかだが野心的', motive: '新規事業の機密データを入手してライバルを出し抜く', alibi: '「VIPルームで三上と商談をしていた」', is_culprit: true },
-    { name: '霧島涼', age: 30, role: 'バーテンダー', relationship: 'VIP専属のバーテンダー', personality: 'クールで無口', motive: '園田からの報酬で協力した可能性', alibi: '「カウンターでドリンクを作っていた」', is_culprit: false }
+    { name: '麗華', age: 27, role: 'No.1ホステス', relationship: '三上の指名ホステス', personality: '妖艶で知的', motive: '三上が他のホステスに乗り換えようとしていた', alibi: '「VIPルームで三上さんの接客をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-10-reika.png' },
+    { name: '北条修', age: 48, role: 'クラブのマネージャー', relationship: '店の運営管理者', personality: '冷静で抜け目がない', motive: '経営難の店の資金不足を補いたい', alibi: '「ホール全体の管理をしていた」', is_culprit: false, portrait_image: 'img/presets/preset-10-hojo.png' },
+    { name: '園田光一', age: 50, role: '取引先の社長', relationship: '三上の競合他社の社長', personality: '穏やかだが野心的', motive: '新規事業の機密データを入手してライバルを出し抜く', alibi: '「VIPルームで三上と商談をしていた」', is_culprit: true, portrait_image: 'img/presets/preset-10-sonoda.png' },
+    { name: '霧島涼', age: 30, role: 'バーテンダー', relationship: 'VIP専属のバーテンダー', personality: 'クールで無口', motive: '園田からの報酬で協力した可能性', alibi: '「カウンターでドリンクを作っていた」', is_culprit: false, portrait_image: 'img/presets/preset-10-kirishima.png' }
   ],
   investigation_phases: [
     {
