@@ -25,7 +25,7 @@ import { generateSceneImages, generateCardImages } from './gemini.js';
 import { animateCardReveal } from './cards.js';
 import { detectSharedScenario, generateShareURL, shareURL, revealSharedSolution } from './share.js';
 import * as R from './renderer.js';
-import { isDebugMode, initDebugMode, getMockScenario, getMockImage, getMockScoringResult, debugLog } from './debug.js';
+import { isDebugMode, initDebugMode, getMockScenario, getMockImage, getMockScoringResult, loadMockImages, debugLog } from './debug.js';
 import { PRESET_SCENARIOS } from './presets.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -56,6 +56,15 @@ async function startGeneration() {
     const scenario = getMockScenario(theme, difficulty);
     store.update({ scenario });
     store.incrementCase();
+
+    // デバッグ用画像を非同期で読み込み → imageCacheにセット
+    const mockImages = await loadMockImages(scenario);
+    store.update({
+      imageCache: {
+        scene: mockImages.scene,
+        portraits: mockImages.portraits
+      }
+    });
 
     setTimeout(() => {
       R.renderIntro();

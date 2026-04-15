@@ -92,14 +92,78 @@ export function getMockScenario(themeId, difficultyId) {
   return scenario;
 }
 
+// デバッグ用画像パスの定義
+const MOCK_IMAGE_PATHS = {
+  scene: '/img/debug/scene.png',
+  portraits: {
+    '佐藤花子': '/img/debug/sato_hanako.png',
+    '鈴木一郎': '/img/debug/suzuki_ichiro.png',
+    '田中美咲': '/img/debug/tanaka_misaki.png',
+    '高橋健太': '/img/debug/takahashi_kenta.png'
+  }
+};
+
 /**
- * モック画像を生成（1x1ピクセル透明PNG）
+ * モック画像を生成（1x1ピクセル透明PNG）— フォールバック用
  * @param {string} type - 'scene' | 'portrait' | 'card'
  * @returns {string} Base64画像データ
  */
 export function getMockImage(type) {
   // 1x1ピクセルの透明PNG（Base64）
   return 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+}
+
+/**
+ * デバッグ用画像をfetchしてBase64に変換し、store.state.imageCacheにセット
+ * 非同期で読み込み、読み込み完了後にUIを再描画するためのコールバックを返す
+ * @param {Object} scenario - モックシナリオ
+ * @returns {Promise<{scene: string|null, portraits: Object}>}
+ */
+export async function loadMockImages(scenario) {
+  const result = { scene: null, portraits: {} };
+
+  /**
+   * 画像URLをfetchしてBase64文字列に変換
+   * @param {string} url
+   * @returns {Promise<string|null>}
+   */
+  async function fetchAsBase64(url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          // 'data:image/png;base64,XXXXX' → 'XXXXX' 部分だけ返す
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      debugLog('system', `モック画像読み込み失敗: ${url}`, e.message);
+      return null;
+    }
+  }
+
+  // シーン画像
+  const scenePromise = fetchAsBase64(MOCK_IMAGE_PATHS.scene)
+    .then(data => { result.scene = data; });
+
+  // 容疑者ポートレート（並列読み込み）
+  const portraitPromises = (scenario.suspects || []).map(async (sus) => {
+    const url = MOCK_IMAGE_PATHS.portraits[sus.name];
+    if (url) {
+      const data = await fetchAsBase64(url);
+      if (data) result.portraits[sus.name] = data;
+    }
+  });
+
+  await Promise.all([scenePromise, ...portraitPromises]);
+  debugLog('system', `モック画像読み込み完了: scene=${!!result.scene}, portraits=${Object.keys(result.portraits).length}`);
+  return result;
 }
 
 /**
