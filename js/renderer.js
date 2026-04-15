@@ -359,6 +359,10 @@ export function renderIntro() {
   setPhaseTheme(0); // 導入: ダークブルー
 
   // 場面設定画像（画像があれば導入テキストの前に挿入）
+  // ※連続プレイ時の重複防止: 既存のscene-imageを先に削除
+  const oldScene = document.querySelector('.scene-image');
+  if (oldScene) oldScene.remove();
+
   const sceneData = store.state.imageCache?.scene;
   const introEl = $('#intro-text');
   if (sceneData && introEl) {
