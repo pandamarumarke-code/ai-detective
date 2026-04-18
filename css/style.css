@@ -1458,6 +1458,71 @@ body {
   max-width: 640px;
 }
 
+.modal-content.modal-sm {
+  max-width: 400px;
+}
+
+/* ホームボタン（ゲームヘッダー左端） */
+.btn-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.btn-home:hover {
+  background: var(--amber-glow);
+  border-color: var(--border-gold);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-gold);
+}
+
+.btn-home:active {
+  transform: scale(0.95);
+}
+
+/* セーブ確認ダイアログ */
+.save-confirm-text {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: var(--space-md);
+}
+
+.save-confirm-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.save-confirm-info:empty {
+  display: none;
+}
+
+.save-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.save-confirm-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .modal-close {
   position: absolute;
   top: var(--space-md);

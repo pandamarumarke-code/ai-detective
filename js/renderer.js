@@ -169,6 +169,53 @@ export function showFreePlayLimitAlert() {
   alert(msg);
 }
 
+/**
+ * レジュームボタンの表示を更新（セーブデータ + チェックポイントの両方に対応）
+ */
+export function renderResumeButton() {
+  const resumeBtn = $('#btn-resume-game');
+  if (!resumeBtn) return;
+
+  const saveInfo = store.hasSaveData();
+  const hasCheckpoint = !!localStorage.getItem('ai_detective_checkpoint');
+
+  if (saveInfo.exists) {
+    // セーブデータあり → 詳細情報付きで表示
+    const phaseLabels = ['導入', '第1調査', '第2調査', '第3調査', '回答'];
+    const phaseText = phaseLabels[saveInfo.phase] || `フェーズ${saveInfo.phase}`;
+    const dateStr = saveInfo.savedAt
+      ? new Date(saveInfo.savedAt).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+    resumeBtn.innerHTML = `
+      <span class="btn-icon">💾</span>
+      セーブデータから再開
+      <small style="display:block;font-size:0.7rem;opacity:0.7;margin-top:2px;">
+        ${escapeHTML(saveInfo.title)} — ${phaseText} ${dateStr ? `(${dateStr})` : ''}
+      </small>
+    `;
+    resumeBtn.style.display = '';
+    resumeBtn.dataset.source = 'save';
+  } else if (hasCheckpoint) {
+    // チェックポイントあり（従来の生成途中保存）
+    resumeBtn.innerHTML = `
+      <span class="btn-icon">▶️</span>
+      前回の事件を再開する
+    `;
+    resumeBtn.style.display = '';
+    resumeBtn.dataset.source = 'checkpoint';
+  } else {
+    resumeBtn.style.display = 'none';
+    resumeBtn.dataset.source = '';
+  }
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 export function initParticles() {
   const container = $('#particles');
   if (!container) return;

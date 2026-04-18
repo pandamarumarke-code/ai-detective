@@ -233,6 +233,7 @@
     <div class="game-container">
       <!-- ヘッダー -->
       <header class="game-header">
+        <button id="btn-home" class="btn-home" title="ホームに戻る">🏠</button>
         <div class="case-badge">
           <span class="case-label">CASE</span>
           <span class="case-number" id="case-number">#001</span>
@@ -709,6 +710,21 @@
       <div class="waiting-actions">
         <button id="btn-mp-start-game" class="btn btn-primary btn-glow" style="display:none;">🎮 事件を開始する</button>
         <button id="btn-mp-leave" class="btn btn-ghost">退出する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- セーブ確認モーダル -->
+  <div id="modal-save-confirm" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-sm">
+      <h2 class="modal-title">🏠 ホームに戻る</h2>
+      <p class="save-confirm-text">現在の進行状況をセーブしてタイトルに戻りますか？</p>
+      <div class="save-confirm-info" id="save-confirm-info"></div>
+      <div class="save-confirm-actions">
+        <button id="btn-save-and-home" class="btn btn-primary">💾 セーブして戻る</button>
+        <button id="btn-no-save-home" class="btn btn-ghost">🗑️ セーブせずに戻る</button>
+        <button id="btn-cancel-home" class="btn btn-secondary">✕ キャンセル</button>
       </div>
     </div>
   </div>

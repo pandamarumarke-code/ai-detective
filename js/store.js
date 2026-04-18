@@ -26,7 +26,8 @@ const STORAGE_KEYS = {
   IMAGE_ENABLED: 'ai_detective_image_enabled',
   ADVISOR_ENABLED: 'ai_detective_advisor_enabled',
   FREE_PLAY: 'ai_detective_free_play',   // {month: 'YYYY-MM', count: N}
-  DEBUG: 'ai_detective_debug'
+  DEBUG: 'ai_detective_debug',
+  SAVE_DATA: 'ai_detective_save'          // セーブポイント（1スロット）
 };
 
 const MAX_HISTORY = 50;
@@ -218,6 +219,113 @@ class Store {
   disableDebug() {
     this.update({ debugMode: false });
     localStorage.removeItem(STORAGE_KEYS.DEBUG);
+  }
+
+  // ---- セーブポイント管理 ----
+
+  /**
+   * ゲーム進行状態をlocalStorageに保存（1スロット方式）
+   */
+  saveGameState() {
+    const { scenario, currentPhase, revealedCards, selectedCards,
+            hintsUsed, hintPenalty, playerAnswers, theme, difficulty,
+            caseCounter, deductionMemo, imageCache, playerNotes } = this._state;
+    if (!scenario) return false;
+
+    const saveData = {
+      savedAt: new Date().toISOString(),
+      title: scenario.title || '不明な事件',
+      scenario,
+      currentPhase,
+      revealedCards,
+      selectedCards: [], // 選択中カードはリセット（フェーズ途中の再開は先頭から）
+      hintsUsed,
+      hintPenalty,
+      playerAnswers,
+      theme,
+      difficulty,
+      caseCounter,
+      deductionMemo,
+      playerNotes,
+      // 画像キャッシュ: プリセット画像(URLパス)はそのまま保存、Base64は巨大なので除外
+      imageCache: {
+        scene: imageCache?.scene && imageCache.scene.length < 300 ? imageCache.scene : null,
+        portraits: Object.fromEntries(
+          Object.entries(imageCache?.portraits || {}).filter(([, v]) => v && v.length < 300)
+        ),
+        cards: {} // カード画像は再生成不要（テキストで代替可能）
+      }
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.SAVE_DATA, JSON.stringify(saveData));
+      return true;
+    } catch (e) {
+      console.error('セーブ失敗:', e);
+      return false;
+    }
+  }
+
+  /**
+   * セーブデータからゲーム状態を復元
+   * @returns {boolean} 復元成功したか
+   */
+  loadGameState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SAVE_DATA);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data.scenario) return false;
+
+      this.update({
+        scenario: data.scenario,
+        currentPhase: data.currentPhase || 0,
+        revealedCards: data.revealedCards || [],
+        selectedCards: [],
+        hintsUsed: data.hintsUsed || 0,
+        hintPenalty: data.hintPenalty || 0,
+        playerAnswers: data.playerAnswers || { culprit: '', motive: '', method: '' },
+        theme: data.theme || 'classic',
+        difficulty: data.difficulty || 'normal',
+        deductionMemo: data.deductionMemo || '',
+        playerNotes: data.playerNotes || '',
+        imageCache: data.imageCache || { scene: null, portraits: {}, cards: {} }
+      });
+
+      // セーブデータを削除（二重復元防止）
+      localStorage.removeItem(STORAGE_KEYS.SAVE_DATA);
+      return true;
+    } catch (e) {
+      console.error('セーブデータ復元失敗:', e);
+      return false;
+    }
+  }
+
+  /**
+   * セーブデータが存在するか判定
+   * @returns {{ exists: boolean, title?: string, savedAt?: string, phase?: number }}
+   */
+  hasSaveData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SAVE_DATA);
+      if (!raw) return { exists: false };
+      const data = JSON.parse(raw);
+      return {
+        exists: true,
+        title: data.title || '不明な事件',
+        savedAt: data.savedAt,
+        phase: data.currentPhase
+      };
+    } catch {
+      return { exists: false };
+    }
+  }
+
+  /**
+   * セーブデータを削除
+   */
+  deleteSaveData() {
+    localStorage.removeItem(STORAGE_KEYS.SAVE_DATA);
   }
 
   // ---- 画像キャッシュ管理 ----

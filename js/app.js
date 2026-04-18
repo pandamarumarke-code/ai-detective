@@ -504,28 +504,46 @@ function setupEventListeners() {
   });
   $('#btn-presets-back').addEventListener('click', () => {
     R.renderTitleStats();
+    R.renderResumeButton();
     R.showScreen('title');
   });
 
-  // レジュームボタン: 保存済みシナリオからゲーム開始
+  // レジュームボタン: セーブデータ or チェックポイントからゲーム開始
   const resumeBtn = $('#btn-resume-game');
   if (resumeBtn) {
     resumeBtn.addEventListener('click', () => {
-      try {
-        const saved = localStorage.getItem('ai_detective_checkpoint');
-        if (!saved) return;
-        const scenario = JSON.parse(saved);
-        store.resetGame();
-        store.update({ scenario });
-        store.incrementCase();
-        localStorage.removeItem('ai_detective_checkpoint');
-        console.log('▶️ チェックポイントからレジューム');
+      const source = resumeBtn.dataset.source;
+
+      if (source === 'save') {
+        // セーブデータからの復元
+        const loaded = store.loadGameState();
+        if (!loaded) {
+          R.showToast('❌ セーブデータの復元に失敗しました');
+          R.renderResumeButton();
+          return;
+        }
+        console.log('💾 セーブデータからレジューム');
         R.renderIntro();
         R.showScreen('game');
-      } catch (err) {
-        console.error('レジューム失敗:', err);
-        localStorage.removeItem('ai_detective_checkpoint');
-        resumeBtn.style.display = 'none';
+        R.showToast('💾 セーブデータから再開しました');
+      } else {
+        // チェックポイントからの復元（従来動作）
+        try {
+          const saved = localStorage.getItem('ai_detective_checkpoint');
+          if (!saved) return;
+          const scenario = JSON.parse(saved);
+          store.resetGame();
+          store.update({ scenario });
+          store.incrementCase();
+          localStorage.removeItem('ai_detective_checkpoint');
+          console.log('▶️ チェックポイントからレジューム');
+          R.renderIntro();
+          R.showScreen('game');
+        } catch (err) {
+          console.error('レジューム失敗:', err);
+          localStorage.removeItem('ai_detective_checkpoint');
+          resumeBtn.style.display = 'none';
+        }
       }
     });
   }
@@ -533,6 +551,7 @@ function setupEventListeners() {
   // ---- 設定画面 ----
   $('#btn-config-back').addEventListener('click', () => {
     R.renderTitleStats();
+    R.renderResumeButton();
     R.showScreen('title');
   });
 
@@ -593,9 +612,64 @@ function setupEventListeners() {
       Multiplayer.returnToTitle();
     } else {
       R.renderTitleStats();
+      R.renderResumeButton();
       R.showScreen('title');
     }
   });
+
+  // ---- ホームボタン（ゲーム画面→タイトルに戻る） ----
+  $('#btn-home').addEventListener('click', () => {
+    // セーブ確認モーダルに現在の進行状況を表示
+    const infoEl = $('#save-confirm-info');
+    if (infoEl) {
+      const s = store.state.scenario;
+      const phaseLabels = ['導入', '第1調査', '第2調査', '第3調査', '回答'];
+      const phaseText = phaseLabels[store.state.currentPhase] || '';
+      const revealedCount = store.state.revealedCards.length;
+      infoEl.innerHTML = `
+        📁 <strong>${s?.title || '進行中の事件'}</strong><br>
+        📍 進行: ${phaseText} ／ 公開済みカード: ${revealedCount}枚
+      `;
+    }
+    R.openModal('save-confirm');
+  });
+
+  // セーブ確認モーダル: セーブして戻る
+  $('#btn-save-and-home').addEventListener('click', () => {
+    const ok = store.saveGameState();
+    R.closeModal('save-confirm');
+    store.resetGame();
+    R.renderTitleStats();
+    R.renderResumeButton();
+    R.showScreen('title');
+    if (ok) {
+      R.showToast('💾 セーブしました');
+    } else {
+      R.showToast('❌ セーブに失敗しました');
+    }
+  });
+
+  // セーブ確認モーダル: セーブせずに戻る
+  $('#btn-no-save-home').addEventListener('click', () => {
+    R.closeModal('save-confirm');
+    store.resetGame();
+    R.renderTitleStats();
+    R.renderResumeButton();
+    R.showScreen('title');
+  });
+
+  // セーブ確認モーダル: キャンセル
+  $('#btn-cancel-home').addEventListener('click', () => {
+    R.closeModal('save-confirm');
+  });
+
+  // セーブ確認モーダル: オーバーレイクリックでキャンセル
+  const saveModalOverlay = document.querySelector('#modal-save-confirm .modal-overlay');
+  if (saveModalOverlay) {
+    saveModalOverlay.addEventListener('click', () => {
+      R.closeModal('save-confirm');
+    });
+  }
 
   // ---- シェアボタン（結果画面） ----
   $('#btn-share-copy').addEventListener('click', () => handleShare(false));
@@ -907,12 +981,8 @@ function init() {
   R.renderFreePlayBadge();
   setupEventListeners();
 
-  // チェックポイントがあれば「前回の事件を再開する」ボタンを表示
-  const checkpoint = localStorage.getItem('ai_detective_checkpoint');
-  const resumeEl = $('#btn-resume-game');
-  if (checkpoint && resumeEl) {
-    resumeEl.style.display = '';
-  }
+  // チェックポイントまたはセーブデータがあればレジュームボタンを表示
+  R.renderResumeButton();
 
   // ==== デバッグイベントハンドラー ====
   document.addEventListener('debug:mockGenerate', () => {
